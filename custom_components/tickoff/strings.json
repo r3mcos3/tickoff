@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Create a task list",
-        "description": "Every list becomes a to-do entity (todo.tickoff_{name}). Tasks are stored in Home Assistant itself.",
+        "description": "Every list becomes a to-do entity (entity id: todo.tickoff_ followed by the list name). Tasks are stored in Home Assistant itself.",
         "data": {
           "name": "List name",
           "notify_service": "Notify service"

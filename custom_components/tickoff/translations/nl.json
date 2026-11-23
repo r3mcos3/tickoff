@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Takenlijst aanmaken",
-        "description": "Elke lijst wordt een todo-entiteit (todo.tickoff_<naam>). Taken worden in Home Assistant zelf opgeslagen.",
+        "description": "Elke lijst wordt een todo-entiteit (entity-id: todo.tickoff_ gevolgd door de lijstnaam). Taken worden in Home Assistant zelf opgeslagen.",
         "data": {
           "name": "Naam van de lijst",
           "notify_service": "Notify-service"
