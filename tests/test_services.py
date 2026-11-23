@@ -4,13 +4,12 @@ import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
 from pytest_homeassistant_custom_component.common import (
-    MockConfigEntry,
     async_capture_events,
 )
 
-from custom_components.tickoff.const import CONF_LIST_NAME, DOMAIN
+from custom_components.tickoff.const import DOMAIN
 
-ENTITY = "todo.tickoff_groceries"
+ENTITY = "todo.tickoff"
 
 
 async def _svc(hass, name, data, *, entity=True, response=False):
@@ -104,7 +103,7 @@ async def test_events(hass, setup_entry):
     await hass.async_block_till_done()
     assert len(created) == len(completed) == len(reopened) == 1
     data = created[0].data
-    assert data["list_name"] == "Groceries" and data["task_id"] == tid
+    assert "list_name" not in data and data["task_id"] == tid
     assert data["priority"] == 1 and data["tags"] == ["x"]
 
 
@@ -119,19 +118,10 @@ async def test_events_from_todo_entity_path(hass, setup_entry):
 
 # ---- global tag register ----
 
-async def test_tag_colors_rename_delete_across_lists(hass: HomeAssistant, setup_entry):
-    second = MockConfigEntry(domain=DOMAIN, title="Chores", unique_id="chores",
-                             data={CONF_LIST_NAME: "Chores"})
-    second.add_to_hass(hass)
-    await hass.config_entries.async_setup(second.entry_id)
-    await hass.async_block_till_done()
-    other = "todo.tickoff_chores"
-
+async def test_tag_colors_rename_delete(hass: HomeAssistant, setup_entry):
     await _svc(hass, "add_task", {"title": "A", "tags": ["garden"]})
-    await hass.services.async_call(
-        DOMAIN, "add_task", {"entity_id": other, "title": "B", "tags": ["GARDEN", "home"]},
-        blocking=True)
-    # one global register: "garden" only exists once, first spelling wins
+    await _svc(hass, "add_task", {"title": "B", "tags": ["GARDEN", "home"]})
+    # one register: "garden" exists once, the first spelling wins
     tags = (await _svc(hass, "get_tags", {}, entity=False, response=True))["tags"]
     assert set(tags) == {"garden", "home"}
     assert tags["garden"]["color"] != tags["home"]["color"]
@@ -141,16 +131,9 @@ async def test_tag_colors_rename_delete_across_lists(hass: HomeAssistant, setup_
     assert tags["garden"]["color"] == "#2e7d32"
 
     await _svc(hass, "rename_tag", {"name": "garden", "new_name": "yard"}, entity=False)
-    assert (await _tasks(hass))[0]["tags"] == ["yard"]
-    resp = await hass.services.async_call(
-        DOMAIN, "get_tasks", {"entity_id": other}, blocking=True, return_response=True)
-    assert resp[other]["tasks"][0]["tags"] == ["yard", "home"]
-
+    assert [t["tags"] for t in await _tasks(hass)] == [["yard"], ["yard", "home"]]
     await _svc(hass, "delete_tag", {"name": "yard"}, entity=False)
-    assert (await _tasks(hass))[0]["tags"] == []
-    resp = await hass.services.async_call(
-        DOMAIN, "get_tasks", {"entity_id": other}, blocking=True, return_response=True)
-    assert resp[other]["tasks"][0]["tags"] == ["home"]
+    assert [t["tags"] for t in await _tasks(hass)] == [[], ["home"]]
 
 
 async def test_rename_to_existing_tag_fails(hass, setup_entry):

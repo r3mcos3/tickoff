@@ -2,44 +2,39 @@
   "config": {
     "step": {
       "user": {
-        "title": "Create a task list",
-        "description": "Every list becomes a to-do entity (entity id: todo.tickoff_ followed by the list name). Tasks are stored in Home Assistant itself.",
+        "title": "Set up Tickoff",
+        "description": "Tickoff keeps all your tasks in Home Assistant. You can choose where due-date notifications go now, or later under Configure (and in the Tickoff panel).",
         "data": {
-          "name": "List name",
-          "notify_service": "Notify service"
+          "notify_targets": "Notification targets"
         },
         "data_description": {
-          "notify_service": "Optional. Service used for due-date notifications of this list, e.g. mobile_app_my_phone."
+          "notify_targets": "Optional. For example Telegram or your phone. Telegram appears here when the Telegram bot integration is set up."
         }
       }
     },
-    "error": {
-      "name_required": "Enter a name for the list."
-    },
     "abort": {
-      "already_configured": "A list with this name already exists."
+      "single_instance_allowed": "Tickoff is already set up."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "List options",
+        "title": "Notifications",
         "data": {
-          "notify_service": "Notify service",
+          "notify_targets": "Notification targets",
           "notify_time": "Notification time"
         },
         "data_description": {
-          "notify_service": "Optional. Service used for due-date notifications of this list, e.g. mobile_app_my_phone.",
-          "notify_time": "Time for due-date notifications of tasks without a time (default 08:00). Tasks with a time notify at that time."
-        },
-        "description": "Per list: the notify service for this list. On the Tickoff overview entry: the default service for all lists and the notification time."
+          "notify_targets": "Optional. For example Telegram or your phone. Telegram appears here when the Telegram bot integration is set up.",
+          "notify_time": "Time for notifications of tasks that have a date but no time (default 08:00). Tasks with a time notify at that time."
+        }
       }
     }
   },
   "services": {
     "add_task": {
       "name": "Add task",
-      "description": "Add a task with priority and tags to a Tickoff list.",
+      "description": "Add a task with priority and tags to Tickoff.",
       "fields": {
         "title": {
           "name": "Title",
@@ -145,7 +140,7 @@
     },
     "get_tasks": {
       "name": "Get tasks",
-      "description": "Return the tasks of a list, optionally filtered.",
+      "description": "Return the tasks , optionally filtered.",
       "fields": {
         "status": {
           "name": "Status",
@@ -159,7 +154,7 @@
     },
     "set_tag": {
       "name": "Set tag colour",
-      "description": "Create a tag or change its colour (global for all lists).",
+      "description": "Create a tag or change its colour.",
       "fields": {
         "name": {
           "name": "Tag",
@@ -173,7 +168,7 @@
     },
     "rename_tag": {
       "name": "Rename tag",
-      "description": "Rename a tag on every task in every list.",
+      "description": "Rename a tag on every task.",
       "fields": {
         "name": {
           "name": "Tag",
@@ -226,7 +221,7 @@
     },
     "delete_completed": {
       "name": "Delete completed tasks",
-      "description": "Remove all done tasks from the list.",
+      "description": "Remove all done tasks.",
       "fields": {}
     },
     "add_subtask": {

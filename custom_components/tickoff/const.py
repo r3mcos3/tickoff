@@ -7,11 +7,13 @@ from typing import Final
 DOMAIN: Final = "tickoff"
 
 CONF_LIST_NAME: Final = "name"
-CONF_NOTIFY_SERVICE: Final = "notify_service"
+CONF_NOTIFY_SERVICE: Final = "notify_service"  # legacy (single service), migrated to notify_targets
+CONF_NOTIFY_TARGETS: Final = "notify_targets"
 CONF_NOTIFY_TIME: Final = "notify_time"
 CONF_KIND: Final = "kind"
-KIND_LIST: Final = "list"
-KIND_OVERVIEW: Final = "overview"
+KIND_MAIN: Final = "main"
+KIND_LIST: Final = "list"  # legacy
+KIND_OVERVIEW: Final = "overview"  # legacy
 DEFAULT_NOTIFY_TIME: Final = "08:00:00"
 HISTORY_LIMIT: Final = 50
 

@@ -15,13 +15,11 @@ from homeassistant.util.hass_dict import HassKey
 
 from .classify import OVERDUE, TODAY, classify, due_moment
 from .const import (
-    CONF_KIND,
-    CONF_NOTIFY_SERVICE,
+    CONF_NOTIFY_TARGETS,
     CONF_NOTIFY_TIME,
     DEFAULT_NOTIFY_TIME,
     DOMAIN,
     EVENT_TASK_DUE,
-    KIND_OVERVIEW,
     STATUS_OPEN,
     TASK_DUE_DATE,
     TASK_DUE_TIME,
@@ -33,6 +31,7 @@ from .const import (
     TASK_TAGS,
     TASK_TITLE,
 )
+from .notify import async_send
 from .storage import TaskStore
 
 _LOGGER = logging.getLogger(__name__)
@@ -88,30 +87,25 @@ class Hub:
         for listener in list(self._listeners):
             listener()
 
-    # ---- settings --------------------------------------------------------
+    # ---- settings (options of the single Tickoff entry) ----------------------
 
     @callback
-    def _overview_options(self) -> dict[str, Any]:
+    def _options(self) -> dict[str, Any]:
         for entry in self.hass.config_entries.async_entries(DOMAIN):
-            if entry.data.get(CONF_KIND) == KIND_OVERVIEW:
-                return dict(entry.options)
+            return dict(entry.options)
         return {}
 
     @callback
     def notify_time(self) -> time:
-        raw = self._overview_options().get(CONF_NOTIFY_TIME) or DEFAULT_NOTIFY_TIME
+        raw = self._options().get(CONF_NOTIFY_TIME) or DEFAULT_NOTIFY_TIME
         try:
             return time.fromisoformat(raw)
         except ValueError:
             return time.fromisoformat(DEFAULT_NOTIFY_TIME)
 
     @callback
-    def notify_service(self, entry_id: str) -> str | None:
-        """Per-list service wins over the global default."""
-        entry = self.hass.config_entries.async_get_entry(entry_id)
-        if entry and (service := entry.options.get(CONF_NOTIFY_SERVICE)):
-            return service
-        return self._overview_options().get(CONF_NOTIFY_SERVICE) or None
+    def notify_targets(self) -> list[str]:
+        return list(self._options().get(CONF_NOTIFY_TARGETS) or [])
 
     # ---- aggregated views --------------------------------------------------
 
@@ -148,7 +142,6 @@ class Hub:
                     out.append(
                         {
                             "title": task[TASK_TITLE],
-                            "list": store.list_name,
                             "due_date": task[TASK_DUE_DATE],
                             "due_time": task[TASK_DUE_TIME],
                             "priority": task[TASK_PRIORITY],
@@ -203,7 +196,6 @@ class Hub:
             EVENT_TASK_DUE,
             {
                 "entry_id": store.entry_id,
-                "list_name": store.list_name,
                 "task_id": task[TASK_ID],
                 "title": task[TASK_TITLE],
                 "due_date": task[TASK_DUE_DATE],
@@ -212,22 +204,10 @@ class Hub:
                 "tags": list(task[TASK_TAGS]),
             },
         )
-        service = self.notify_service(store.entry_id)
-        if not service:
-            return
-        message = task[TASK_TITLE] + (f" ({task[TASK_DUE_TIME]})" if task[TASK_DUE_TIME] else "")
-        if not self.hass.services.has_service("notify", service):
-            _LOGGER.warning("Notify service notify.%s not found; message skipped", service)
-            return
-        try:
-            await self.hass.services.async_call(
-                "notify",
-                service,
-                {"title": f"Tickoff · {store.list_name}", "message": message},
-                blocking=False,
-            )
-        except Exception:
-            _LOGGER.exception("Sending notification through notify.%s failed", service)
+        targets = self.notify_targets()
+        if targets:
+            message = task[TASK_TITLE] + (f" ({task[TASK_DUE_TIME]})" if task[TASK_DUE_TIME] else "")
+            await async_send(self.hass, targets, "Tickoff", message)
 
 
 @callback

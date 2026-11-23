@@ -16,7 +16,6 @@ from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util
-from homeassistant.util import slugify
 
 from . import TickoffConfigEntry
 from .const import (
@@ -40,7 +39,7 @@ async def async_setup_entry(
     entry: TickoffConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    async_add_entities([TasksTodoListEntity(entry)])
+    async_add_entities([TickoffTodoEntity(entry)])
 
 
 def _to_todo_item(task: dict[str, Any]) -> TodoItem:
@@ -75,8 +74,8 @@ def _split_due(due: date | datetime | None) -> tuple[date | None, time | None]:
     return due, None
 
 
-class TasksTodoListEntity(TodoListEntity):
-    """One task list."""
+class TickoffTodoEntity(TodoListEntity):
+    """All tasks."""
 
     # Not name-from-device: lets us decouple the friendly name (bare list name)
     # from the entity_id (tickoff_ prefix).
@@ -95,12 +94,9 @@ class TasksTodoListEntity(TodoListEntity):
     def __init__(self, entry: TickoffConfigEntry) -> None:
         self._store: TaskStore = entry.runtime_data
         self._attr_unique_id = entry.entry_id
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)}, name=entry.title
-        )
-        self._attr_name = entry.title
-        # entity_id gets the tickoff_ prefix; the friendly name stays the bare list name
-        self.internal_integration_suggested_object_id = f"tickoff_{slugify(entry.title)}"
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, entry.entry_id)}, name="Tickoff")
+        self._attr_name = "Tickoff"
+        self.internal_integration_suggested_object_id = "tickoff"  # -> todo.tickoff
 
     async def async_added_to_hass(self) -> None:
         self.async_on_remove(self._store.async_add_listener(self._refresh))

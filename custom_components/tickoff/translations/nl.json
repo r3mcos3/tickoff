@@ -2,44 +2,39 @@
   "config": {
     "step": {
       "user": {
-        "title": "Takenlijst aanmaken",
-        "description": "Elke lijst wordt een todo-entiteit (entity-id: todo.tickoff_ gevolgd door de lijstnaam). Taken worden in Home Assistant zelf opgeslagen.",
+        "title": "Tickoff instellen",
+        "description": "Tickoff bewaart al je taken in Home Assistant. Je kunt nu kiezen waar meldingen op de vervaldag heen gaan, of later via Configureren (en in het Tickoff-paneel).",
         "data": {
-          "name": "Naam van de lijst",
-          "notify_service": "Notify-service"
+          "notify_targets": "Meldingsdoelen"
         },
         "data_description": {
-          "notify_service": "Optioneel. Service voor meldingen op de vervaldag van deze lijst, bv. mobile_app_mijn_telefoon."
+          "notify_targets": "Optioneel. Bijvoorbeeld Telegram of je telefoon. Telegram staat hier als de Telegram-bot-integratie is ingesteld."
         }
       }
     },
-    "error": {
-      "name_required": "Vul een naam voor de lijst in."
-    },
     "abort": {
-      "already_configured": "Er bestaat al een lijst met deze naam."
+      "single_instance_allowed": "Tickoff is al ingesteld."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Lijstopties",
+        "title": "Meldingen",
         "data": {
-          "notify_service": "Notify-service",
+          "notify_targets": "Meldingsdoelen",
           "notify_time": "Meldtijd"
         },
         "data_description": {
-          "notify_service": "Optioneel. Service voor meldingen op de vervaldag van deze lijst, bv. mobile_app_mijn_telefoon.",
-          "notify_time": "Tijd voor meldingen van taken zonder tijd (standaard 08:00). Taken met een tijd melden op die tijd."
-        },
-        "description": "Per lijst: de notify-service voor deze lijst. Op de Tickoff-overzichtsentry: de standaardservice voor alle lijsten en de meldtijd."
+          "notify_targets": "Optioneel. Bijvoorbeeld Telegram of je telefoon. Telegram staat hier als de Telegram-bot-integratie is ingesteld.",
+          "notify_time": "Tijd voor meldingen van taken met een datum maar zonder tijd (standaard 08:00). Taken met een tijd melden op die tijd."
+        }
       }
     }
   },
   "services": {
     "add_task": {
       "name": "Taak toevoegen",
-      "description": "Voeg een taak met prioriteit en tags toe aan een Tickoff-lijst.",
+      "description": "Voeg een taak met prioriteit en tags toe aan Tickoff.",
       "fields": {
         "title": {
           "name": "Titel",
@@ -145,7 +140,7 @@
     },
     "get_tasks": {
       "name": "Taken ophalen",
-      "description": "Geef de taken van een lijst terug, eventueel gefilterd.",
+      "description": "Geef de taken terug, eventueel gefilterd.",
       "fields": {
         "status": {
           "name": "Status",
@@ -159,7 +154,7 @@
     },
     "set_tag": {
       "name": "Tagkleur instellen",
-      "description": "Maak een tag aan of wijzig de kleur (globaal voor alle lijsten).",
+      "description": "Maak een tag aan of wijzig de kleur.",
       "fields": {
         "name": {
           "name": "Tag",
@@ -173,7 +168,7 @@
     },
     "rename_tag": {
       "name": "Tag hernoemen",
-      "description": "Hernoem een tag op alle taken in alle lijsten.",
+      "description": "Hernoem een tag op alle taken.",
       "fields": {
         "name": {
           "name": "Tag",
@@ -226,7 +221,7 @@
     },
     "delete_completed": {
       "name": "Voltooide taken verwijderen",
-      "description": "Verwijder alle afgevinkte taken uit de lijst.",
+      "description": "Verwijder alle afgevinkte taken.",
       "fields": {}
     },
     "add_subtask": {

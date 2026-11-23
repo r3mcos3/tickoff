@@ -8,7 +8,7 @@ from homeassistant.exceptions import ServiceValidationError
 
 from custom_components.tickoff.const import DOMAIN
 
-ENTITY = "todo.tickoff_groceries"
+ENTITY = "todo.tickoff"
 
 
 async def svc(hass, name, data=None, *, response=False):

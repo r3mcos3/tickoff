@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.tickoff.const import CONF_LIST_NAME, DOMAIN
+from custom_components.tickoff.const import CONF_KIND, DOMAIN, KIND_MAIN
 
 
 @pytest.fixture(autouse=True)
@@ -16,10 +16,7 @@ def auto_enable_custom_integrations(enable_custom_integrations):
 @pytest.fixture
 def mock_entry() -> MockConfigEntry:
     return MockConfigEntry(
-        domain=DOMAIN,
-        title="Groceries",
-        unique_id="groceries",
-        data={CONF_LIST_NAME: "Groceries", "kind": "list"},
+        domain=DOMAIN, title="Tickoff", unique_id=KIND_MAIN, data={CONF_KIND: KIND_MAIN}
     )
 
 

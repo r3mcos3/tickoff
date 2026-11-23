@@ -55,12 +55,9 @@ def _fmt_time(value: time | None) -> str | None:
 class TaskStore:
     """All tasks of one list, kept in memory and persisted with a delayed save."""
 
-    def __init__(
-        self, hass: HomeAssistant, entry_id: str, list_name: str, tags: TagRegistry
-    ) -> None:
+    def __init__(self, hass: HomeAssistant, entry_id: str, tags: TagRegistry) -> None:
         self._hass = hass
         self.entry_id = entry_id
-        self.list_name = list_name
         self._tag_registry = tags
         self._store: Store[dict[str, Any]] = Store(
             hass, STORAGE_VERSION, f"{STORAGE_KEY_PREFIX}{entry_id}"
@@ -130,7 +127,6 @@ class TaskStore:
             event,
             {
                 "entry_id": self.entry_id,
-                "list_name": self.list_name,
                 "task_id": task[TASK_ID],
                 "title": task[TASK_TITLE],
                 "due_date": task[TASK_DUE_DATE],

@@ -7,7 +7,7 @@ from custom_components.tickoff.tags import TagRegistry
 
 
 async def test_add_update_delete(hass):
-    store = TaskStore(hass, "e1", "Test", TagRegistry(hass))
+    store = TaskStore(hass, "e1", TagRegistry(hass))
     await store.async_load()
     a = store.add("Milk", due_date=date(2026, 12, 1), due_time=time(8, 30))
     b = store.add("Bread")
@@ -28,7 +28,7 @@ async def test_add_update_delete(hass):
 
 
 async def test_move(hass):
-    store = TaskStore(hass, "e1", "Test", TagRegistry(hass))
+    store = TaskStore(hass, "e1", TagRegistry(hass))
     await store.async_load()
     a, _b, c = (store.add(x) for x in "abc")
     store.move(c["id"], None)
@@ -38,10 +38,10 @@ async def test_move(hass):
 
 
 async def test_persists_across_reload(hass, hass_storage):
-    store = TaskStore(hass, "e1", "Test", TagRegistry(hass))
+    store = TaskStore(hass, "e1", TagRegistry(hass))
     await store.async_load()
     store.add("Persist me")
     await store._store.async_save(store._data_to_save())
-    store2 = TaskStore(hass, "e1", "Test", TagRegistry(hass))
+    store2 = TaskStore(hass, "e1", TagRegistry(hass))
     await store2.async_load()
     assert [t["title"] for t in store2.tasks()] == ["Persist me"]

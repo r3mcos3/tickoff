@@ -5,7 +5,7 @@ from homeassistant.components.todo import DOMAIN as TODO_DOMAIN
 from homeassistant.components.todo import TodoServices
 from homeassistant.const import ATTR_ENTITY_ID
 
-ENTITY = "todo.tickoff_groceries"
+ENTITY = "todo.tickoff"
 
 
 async def _call(hass, service, data):
@@ -77,6 +77,6 @@ async def test_tasks_survive_reload(hass, setup_entry):
     assert [i["summary"] for i in await _items(hass)] == ["Keep me"]
 
 
-async def test_friendly_name_is_bare_list_name(hass, setup_entry):
+async def test_friendly_name_is_tickoff(hass, setup_entry):
     state = hass.states.get(ENTITY)
-    assert state.attributes["friendly_name"] == "Groceries"
+    assert state.attributes["friendly_name"] == "Tickoff"

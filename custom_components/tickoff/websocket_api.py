@@ -1,29 +1,21 @@
-"""Websocket API used by the Tickoff dashboard card."""
+"""Websocket API used by the Tickoff panel and card."""
 
 from __future__ import annotations
 
+from datetime import time
 from typing import Any
 
 import voluptuous as vol
 from homeassistant.components import websocket_api
-from homeassistant.config_entries import SOURCE_IMPORT
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.util import dt as dt_util
 
 from .classify import classify
-from .config_flow import notify_service_options
-from .const import (
-    CONF_KIND,
-    CONF_LIST_NAME,
-    CONF_NOTIFY_SERVICE,
-    CONF_NOTIFY_TIME,
-    DEFAULT_NOTIFY_TIME,
-    DOMAIN,
-    KIND_OVERVIEW,
-)
+from .const import CONF_NOTIFY_TARGETS, CONF_NOTIFY_TIME, DEFAULT_NOTIFY_TIME, DOMAIN
 from .hub import Hub, async_get_hub
+from .notify import async_notify_targets, async_send
 from .services import task_to_response
 from .tags import async_get_tag_registry
 
@@ -32,52 +24,38 @@ from .tags import async_get_tag_registry
 def async_register_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_subscribe)
     websocket_api.async_register_command(hass, ws_snapshot)
-    websocket_api.async_register_command(hass, ws_list_create)
-    websocket_api.async_register_command(hass, ws_list_update)
-    websocket_api.async_register_command(hass, ws_list_delete)
     websocket_api.async_register_command(hass, ws_settings_set)
+    websocket_api.async_register_command(hass, ws_test_notify)
 
 
-def _overview_entry(hass: HomeAssistant) -> Any:
-    return next(
-        (e for e in hass.config_entries.async_entries(DOMAIN) if e.data.get(CONF_KIND) == KIND_OVERVIEW),
-        None,
-    )
+def _entry(hass: HomeAssistant) -> Any:
+    return next(iter(hass.config_entries.async_entries(DOMAIN)), None)
 
 
 def build_snapshot(hub: Hub, tags: dict[str, dict[str, str]]) -> dict[str, Any]:
-    """Everything the card needs: lists with tasks (classified) and the global tags."""
+    """Everything the UI needs: the tasks (classified), the global tags and the settings."""
     now = dt_util.now()
-    lists = []
+    entry = _entry(hub.hass)
+    options = dict(entry.options) if entry else {}
+    chosen = list(options.get(CONF_NOTIFY_TARGETS) or [])
+    tasks: list[dict[str, Any]] = []
+    entity_id = None
     for store in hub.stores.values():
-        tasks = []
+        entity_id = hub.entity_id_for(store.entry_id)
         for task in store.tasks():
             item = task_to_response(task)
             item["state"] = classify(task, now)
             tasks.append(item)
-        lists.append(
-            {
-                "entry_id": store.entry_id,
-                "entity_id": hub.entity_id_for(store.entry_id),
-                "name": store.list_name,
-                "notify_service": (
-                    (entry.options.get(CONF_NOTIFY_SERVICE) if (entry := hub.hass.config_entries.async_get_entry(store.entry_id)) else None)
-                    or ""
-                ),
-                "tasks": tasks,
-            }
-        )
-    overview = _overview_entry(hub.hass)
-    options = dict(overview.options) if overview else {}
     return {
         "now": now.isoformat(),
-        "lists": lists,
+        "entity_id": entity_id,
+        "tasks": tasks,
         "tags": tags,
         "settings": {
-            "notify_service": options.get(CONF_NOTIFY_SERVICE, ""),
+            "notify_targets": chosen,
             "notify_time": options.get(CONF_NOTIFY_TIME, DEFAULT_NOTIFY_TIME),
         },
-        "notify_services": notify_service_options(hub.hass),
+        "notify_targets": async_notify_targets(hub.hass, chosen),
     }
 
 
@@ -121,110 +99,25 @@ async def ws_subscribe(hass: HomeAssistant, connection: Any, msg: dict[str, Any]
     push()
 
 
-def _list_entry(hass: HomeAssistant, entry_id: str) -> Any:
-    entry = hass.config_entries.async_get_entry(entry_id)
-    if entry is None or entry.domain != DOMAIN or entry.data.get(CONF_KIND) == KIND_OVERVIEW:
-        return None
-    return entry
-
-
-@websocket_api.require_admin
-@websocket_api.websocket_command(
-    {
-        vol.Required("type"): "tickoff/list_create",
-        vol.Required("name"): cv.string,
-        vol.Optional("notify_service"): vol.Any(cv.string, None),
-    }
-)
-@websocket_api.async_response
-async def ws_list_create(hass: HomeAssistant, connection: Any, msg: dict[str, Any]) -> None:
-    from homeassistant.data_entry_flow import FlowResultType
-
-    name = msg["name"].strip()
-    if not name:
-        connection.send_error(msg["id"], "invalid_name", "Name is required")
-        return
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN,
-        context={"source": SOURCE_IMPORT},
-        data={CONF_LIST_NAME: name, CONF_NOTIFY_SERVICE: msg.get("notify_service") or None},
-    )
-    if result["type"] is FlowResultType.ABORT:
-        connection.send_error(msg["id"], "already_exists", "A list with this name already exists")
-        return
-    connection.send_result(msg["id"], {"entry_id": result["result"].entry_id})
-
-
-@websocket_api.require_admin
-@websocket_api.websocket_command(
-    {
-        vol.Required("type"): "tickoff/list_update",
-        vol.Required("entry_id"): cv.string,
-        vol.Optional("name"): cv.string,
-        vol.Optional("notify_service"): vol.Any(cv.string, None),
-    }
-)
-@websocket_api.async_response
-async def ws_list_update(hass: HomeAssistant, connection: Any, msg: dict[str, Any]) -> None:
-    entry = _list_entry(hass, msg["entry_id"])
-    if entry is None:
-        connection.send_error(msg["id"], "not_found", "Unknown list")
-        return
-    options = dict(entry.options)
-    if "notify_service" in msg:
-        if msg["notify_service"]:
-            options[CONF_NOTIFY_SERVICE] = msg["notify_service"]
-        else:
-            options.pop(CONF_NOTIFY_SERVICE, None)
-    title = entry.title
-    if msg.get("name") and msg["name"].strip():
-        title = msg["name"].strip()
-        for other in hass.config_entries.async_entries(DOMAIN):
-            if other.entry_id != entry.entry_id and other.title.lower() == title.lower():
-                connection.send_error(msg["id"], "already_exists", "A list with this name already exists")
-                return
-    hass.config_entries.async_update_entry(entry, title=title, options=options)
-    connection.send_result(msg["id"])
-
-
-@websocket_api.require_admin
-@websocket_api.websocket_command(
-    {vol.Required("type"): "tickoff/list_delete", vol.Required("entry_id"): cv.string}
-)
-@websocket_api.async_response
-async def ws_list_delete(hass: HomeAssistant, connection: Any, msg: dict[str, Any]) -> None:
-    entry = _list_entry(hass, msg["entry_id"])
-    if entry is None:
-        connection.send_error(msg["id"], "not_found", "Unknown list")
-        return
-    await hass.config_entries.async_remove(entry.entry_id)
-    connection.send_result(msg["id"])
-
-
 @websocket_api.require_admin
 @websocket_api.websocket_command(
     {
         vol.Required("type"): "tickoff/settings_set",
-        vol.Optional("notify_service"): vol.Any(cv.string, None),
+        vol.Optional("notify_targets"): [cv.string],
         vol.Optional("notify_time"): cv.string,
     }
 )
 @websocket_api.async_response
 async def ws_settings_set(hass: HomeAssistant, connection: Any, msg: dict[str, Any]) -> None:
-    entry = _overview_entry(hass)
+    entry = _entry(hass)
     if entry is None:
-        connection.send_error(msg["id"], "not_found", "Create a list first")
+        connection.send_error(msg["id"], "not_found", "Tickoff is not set up")
         return
     options = dict(entry.options)
-    if "notify_service" in msg:
-        if msg["notify_service"]:
-            options[CONF_NOTIFY_SERVICE] = msg["notify_service"]
-        else:
-            options.pop(CONF_NOTIFY_SERVICE, None)
+    if "notify_targets" in msg:
+        options[CONF_NOTIFY_TARGETS] = list(dict.fromkeys(msg["notify_targets"]))
     if "notify_time" in msg:
         try:
-            from datetime import time
-
             time.fromisoformat(msg["notify_time"])
         except ValueError:
             connection.send_error(msg["id"], "invalid_time", "Use HH:MM:SS")
@@ -232,3 +125,17 @@ async def ws_settings_set(hass: HomeAssistant, connection: Any, msg: dict[str, A
         options[CONF_NOTIFY_TIME] = msg["notify_time"]
     hass.config_entries.async_update_entry(entry, options=options)
     connection.send_result(msg["id"])
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required("type"): "tickoff/test_notify"})
+@websocket_api.async_response
+async def ws_test_notify(hass: HomeAssistant, connection: Any, msg: dict[str, Any]) -> None:
+    """Send one test message to the chosen targets (only when an admin presses the button)."""
+    hub = async_get_hub(hass)
+    targets = hub.notify_targets()
+    if not targets:
+        connection.send_error(msg["id"], "no_targets", "Choose at least one notification target")
+        return
+    sent = await async_send(hass, targets, "Tickoff", "Test notification from Tickoff ✅")
+    connection.send_result(msg["id"], {"sent": sent, "targets": len(targets)})

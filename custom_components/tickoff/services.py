@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import (
     HomeAssistant,
     ServiceCall,
@@ -16,17 +15,8 @@ from homeassistant.core import (
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import service
-from homeassistant.helpers.storage import Store
 
-from .const import (
-    CONF_KIND,
-    DOMAIN,
-    KIND_OVERVIEW,
-    PRIORITY_HIGH,
-    PRIORITY_NONE,
-    STORAGE_KEY_PREFIX,
-    STORAGE_VERSION,
-)
+from .const import DOMAIN, PRIORITY_HIGH, PRIORITY_NONE
 from .recurrence import RECURRENCE_SCHEMA
 from .tags import async_get_tag_registry
 
@@ -92,31 +82,6 @@ ENTITY_SERVICES: tuple[tuple[str, dict, str, SupportsResponse], ...] = (
 )
 
 
-async def _async_patch_unloaded_lists(hass: HomeAssistant, patch: Any) -> None:
-    """Apply a tag change to lists that are not loaded (disabled/failed entries).
-
-    Loaded lists are updated through the registry subscription; the others only exist as a
-    Store file, so patch that directly. Otherwise a rename would silently drop the tag there.
-    """
-    for entry in hass.config_entries.async_entries(DOMAIN):
-        if entry.data.get(CONF_KIND) == KIND_OVERVIEW or entry.state is ConfigEntryState.LOADED:
-            continue
-        store: Store[dict[str, Any]] = Store(
-            hass, STORAGE_VERSION, f"{STORAGE_KEY_PREFIX}{entry.entry_id}"
-        )
-        data = await store.async_load()
-        if not data:
-            continue
-        changed = False
-        for task in data.get("tasks", []):
-            new_tags = patch(task.get("tags", []))
-            if new_tags != task.get("tags", []):
-                task["tags"] = new_tags
-                changed = True
-        if changed:
-            await store.async_save(data)
-
-
 @callback
 def async_register_services(hass: HomeAssistant) -> None:
     """Register entity services (on todo entities of this integration) and global ones."""
@@ -137,25 +102,19 @@ def async_register_services(hass: HomeAssistant) -> None:
 
     async def rename_tag(call: ServiceCall) -> None:
         registry = await async_get_tag_registry(hass)
-        old = registry.find(call.data["name"])
         try:
-            new = registry.rename(call.data["name"], call.data["new_name"])
+            registry.rename(call.data["name"], call.data["new_name"])
         except KeyError as err:
             raise ServiceValidationError(f"Unknown tag {call.data['name']!r}") from err
         except ValueError as err:
             raise ServiceValidationError(str(err)) from err
-        await _async_patch_unloaded_lists(
-            hass, lambda tags: [new if t == old else t for t in tags]
-        )
 
     async def delete_tag(call: ServiceCall) -> None:
         registry = await async_get_tag_registry(hass)
-        old = registry.find(call.data["name"])
         try:
             registry.delete(call.data["name"])
         except KeyError as err:
             raise ServiceValidationError(f"Unknown tag {call.data['name']!r}") from err
-        await _async_patch_unloaded_lists(hass, lambda tags: [t for t in tags if t != old])
 
     async def get_tags(call: ServiceCall) -> ServiceResponse:
         registry = await async_get_tag_registry(hass)
