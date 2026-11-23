@@ -3,11 +3,187 @@
     "step": {
       "user": {
         "title": "Create a task list",
-        "description": "Every list becomes a to-do entity. Tasks are stored in Home Assistant itself.",
-        "data": { "name": "List name" }
+        "description": "Every list becomes a to-do entity (todo.tickoff_<name>). Tasks are stored in Home Assistant itself.",
+        "data": {
+          "name": "List name",
+          "notify_service": "Notify service"
+        },
+        "data_description": {
+          "notify_service": "Optional. Service used for due-date notifications of this list, e.g. mobile_app_my_phone."
+        }
       }
     },
-    "error": { "name_required": "Enter a name for the list." },
-    "abort": { "already_configured": "A list with this name already exists." }
+    "error": {
+      "name_required": "Enter a name for the list."
+    },
+    "abort": {
+      "already_configured": "A list with this name already exists."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "List options",
+        "data": {
+          "notify_service": "Notify service"
+        },
+        "data_description": {
+          "notify_service": "Optional. Service used for due-date notifications of this list, e.g. mobile_app_my_phone."
+        }
+      }
+    }
+  },
+  "services": {
+    "add_task": {
+      "name": "Add task",
+      "description": "Add a task with priority and tags to a Tickoff list.",
+      "fields": {
+        "title": {
+          "name": "Title",
+          "description": ""
+        },
+        "notes": {
+          "name": "Notes",
+          "description": ""
+        },
+        "due_date": {
+          "name": "Due date",
+          "description": ""
+        },
+        "due_time": {
+          "name": "Due time",
+          "description": ""
+        },
+        "priority": {
+          "name": "Priority",
+          "description": "0 none, 1 low, 2 medium, 3 high."
+        },
+        "tags": {
+          "name": "Tags",
+          "description": "Unknown tags are created in the global tag register."
+        }
+      }
+    },
+    "update_task": {
+      "name": "Update task",
+      "description": "Change fields of a task; omitted fields stay as they are.",
+      "fields": {
+        "task_id": {
+          "name": "Task ID",
+          "description": ""
+        },
+        "title": {
+          "name": "Title",
+          "description": ""
+        },
+        "notes": {
+          "name": "Notes",
+          "description": ""
+        },
+        "due_date": {
+          "name": "Due date",
+          "description": ""
+        },
+        "due_time": {
+          "name": "Due time",
+          "description": ""
+        },
+        "priority": {
+          "name": "Priority",
+          "description": "0 none, 1 low, 2 medium, 3 high."
+        },
+        "tags": {
+          "name": "Tags",
+          "description": "Unknown tags are created in the global tag register."
+        }
+      }
+    },
+    "complete_task": {
+      "name": "Complete task",
+      "description": "Mark a task as done.",
+      "fields": {
+        "task_id": {
+          "name": "Task ID",
+          "description": ""
+        }
+      }
+    },
+    "reopen_task": {
+      "name": "Reopen task",
+      "description": "Mark a done task as open again.",
+      "fields": {
+        "task_id": {
+          "name": "Task ID",
+          "description": ""
+        }
+      }
+    },
+    "delete_task": {
+      "name": "Delete task",
+      "description": "Delete a task.",
+      "fields": {
+        "task_id": {
+          "name": "Task ID",
+          "description": ""
+        }
+      }
+    },
+    "get_tasks": {
+      "name": "Get tasks",
+      "description": "Return the tasks of a list, optionally filtered.",
+      "fields": {
+        "status": {
+          "name": "Status",
+          "description": ""
+        },
+        "tag": {
+          "name": "Tag",
+          "description": ""
+        }
+      }
+    },
+    "set_tag": {
+      "name": "Set tag colour",
+      "description": "Create a tag or change its colour (global for all lists).",
+      "fields": {
+        "name": {
+          "name": "Tag",
+          "description": ""
+        },
+        "color": {
+          "name": "Colour",
+          "description": "#rrggbb"
+        }
+      }
+    },
+    "rename_tag": {
+      "name": "Rename tag",
+      "description": "Rename a tag on every task in every list.",
+      "fields": {
+        "name": {
+          "name": "Tag",
+          "description": ""
+        },
+        "new_name": {
+          "name": "New name",
+          "description": ""
+        }
+      }
+    },
+    "delete_tag": {
+      "name": "Delete tag",
+      "description": "Delete a tag and remove it from every task.",
+      "fields": {
+        "name": {
+          "name": "Tag",
+          "description": ""
+        }
+      }
+    },
+    "get_tags": {
+      "name": "Get tags",
+      "description": "Return all tags with their colours.",
+      "fields": {}
+    }
   }
 }

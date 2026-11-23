@@ -3,11 +3,187 @@
     "step": {
       "user": {
         "title": "Takenlijst aanmaken",
-        "description": "Elke lijst wordt een todo-entiteit. Taken worden in Home Assistant zelf opgeslagen.",
-        "data": { "name": "Naam van de lijst" }
+        "description": "Elke lijst wordt een todo-entiteit (todo.tickoff_<naam>). Taken worden in Home Assistant zelf opgeslagen.",
+        "data": {
+          "name": "Naam van de lijst",
+          "notify_service": "Notify-service"
+        },
+        "data_description": {
+          "notify_service": "Optioneel. Service voor meldingen op de vervaldag van deze lijst, bv. mobile_app_mijn_telefoon."
+        }
       }
     },
-    "error": { "name_required": "Vul een naam voor de lijst in." },
-    "abort": { "already_configured": "Er bestaat al een lijst met deze naam." }
+    "error": {
+      "name_required": "Vul een naam voor de lijst in."
+    },
+    "abort": {
+      "already_configured": "Er bestaat al een lijst met deze naam."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Lijstopties",
+        "data": {
+          "notify_service": "Notify-service"
+        },
+        "data_description": {
+          "notify_service": "Optioneel. Service voor meldingen op de vervaldag van deze lijst, bv. mobile_app_mijn_telefoon."
+        }
+      }
+    }
+  },
+  "services": {
+    "add_task": {
+      "name": "Taak toevoegen",
+      "description": "Voeg een taak met prioriteit en tags toe aan een Tickoff-lijst.",
+      "fields": {
+        "title": {
+          "name": "Titel",
+          "description": ""
+        },
+        "notes": {
+          "name": "Notities",
+          "description": ""
+        },
+        "due_date": {
+          "name": "Vervaldatum",
+          "description": ""
+        },
+        "due_time": {
+          "name": "Vervaltijd",
+          "description": ""
+        },
+        "priority": {
+          "name": "Prioriteit",
+          "description": "0 geen, 1 laag, 2 midden, 3 hoog."
+        },
+        "tags": {
+          "name": "Tags",
+          "description": "Onbekende tags worden aangemaakt in het globale tagregister."
+        }
+      }
+    },
+    "update_task": {
+      "name": "Taak wijzigen",
+      "description": "Wijzig velden van een taak; weggelaten velden blijven zoals ze zijn.",
+      "fields": {
+        "task_id": {
+          "name": "Taak-ID",
+          "description": ""
+        },
+        "title": {
+          "name": "Titel",
+          "description": ""
+        },
+        "notes": {
+          "name": "Notities",
+          "description": ""
+        },
+        "due_date": {
+          "name": "Vervaldatum",
+          "description": ""
+        },
+        "due_time": {
+          "name": "Vervaltijd",
+          "description": ""
+        },
+        "priority": {
+          "name": "Prioriteit",
+          "description": "0 geen, 1 laag, 2 midden, 3 hoog."
+        },
+        "tags": {
+          "name": "Tags",
+          "description": "Onbekende tags worden aangemaakt in het globale tagregister."
+        }
+      }
+    },
+    "complete_task": {
+      "name": "Taak afvinken",
+      "description": "Markeer een taak als klaar.",
+      "fields": {
+        "task_id": {
+          "name": "Taak-ID",
+          "description": ""
+        }
+      }
+    },
+    "reopen_task": {
+      "name": "Taak heropenen",
+      "description": "Zet een afgevinkte taak weer open.",
+      "fields": {
+        "task_id": {
+          "name": "Taak-ID",
+          "description": ""
+        }
+      }
+    },
+    "delete_task": {
+      "name": "Taak verwijderen",
+      "description": "Verwijder een taak.",
+      "fields": {
+        "task_id": {
+          "name": "Taak-ID",
+          "description": ""
+        }
+      }
+    },
+    "get_tasks": {
+      "name": "Taken ophalen",
+      "description": "Geef de taken van een lijst terug, eventueel gefilterd.",
+      "fields": {
+        "status": {
+          "name": "Status",
+          "description": ""
+        },
+        "tag": {
+          "name": "Tag",
+          "description": ""
+        }
+      }
+    },
+    "set_tag": {
+      "name": "Tagkleur instellen",
+      "description": "Maak een tag aan of wijzig de kleur (globaal voor alle lijsten).",
+      "fields": {
+        "name": {
+          "name": "Tag",
+          "description": ""
+        },
+        "color": {
+          "name": "Kleur",
+          "description": "#rrggbb"
+        }
+      }
+    },
+    "rename_tag": {
+      "name": "Tag hernoemen",
+      "description": "Hernoem een tag op alle taken in alle lijsten.",
+      "fields": {
+        "name": {
+          "name": "Tag",
+          "description": ""
+        },
+        "new_name": {
+          "name": "Nieuwe naam",
+          "description": ""
+        }
+      }
+    },
+    "delete_tag": {
+      "name": "Tag verwijderen",
+      "description": "Verwijder een tag en haal hem van alle taken af.",
+      "fields": {
+        "name": {
+          "name": "Tag",
+          "description": ""
+        }
+      }
+    },
+    "get_tags": {
+      "name": "Tags ophalen",
+      "description": "Geef alle tags met hun kleur terug.",
+      "fields": {}
+    }
   }
 }
