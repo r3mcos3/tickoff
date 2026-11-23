@@ -255,27 +255,34 @@ async def test_restart_issue_cleared_on_start(hass, aioclient_mock, mock_entry):
 HACS_ID = "update.tickoff_update"
 
 
-def add_hacs_entity(hass, *, installed="v0.4.1", latest="v0.4.2", platform="hacs", url="https://github.com/r3mcos3/tickoff/releases/v0.4.2"):
+def add_hacs_entity(hass, *, installed="v0.4.1", latest="v0.4.2", platform="hacs", url=None):
+    if url is None:  # HACS: .../releases/v0.4.2   Marketplace: .../releases/tag/v0.4.2
+        url = "https://github.com/r3mcos3/tickoff/releases/" + ("tag/" if platform == "marketplace" else "") + latest
     from homeassistant.helpers import entity_registry as er
 
     er.async_get(hass).async_get_or_create("update", platform, "123", suggested_object_id="tickoff_update")
     hass.states.async_set(HACS_ID, "on", {"installed_version": installed, "latest_version": latest, "release_url": url})
 
 
-async def test_hacs_entity_is_mirrored_and_install_is_delegated(hass, aioclient_mock, mock_entry, fake_install):
+@pytest.mark.parametrize("platform", ["hacs", "marketplace"])
+async def test_package_manager_entity_is_mirrored_and_install_is_delegated(hass, aioclient_mock, mock_entry, fake_install, platform):
+    """HACS and the Marketplace built into HA 2026.11 both create an update entity for Tickoff."""
+    from homeassistant.core import Context
     from pytest_homeassistant_custom_component.common import async_mock_service
 
-    add_hacs_entity(hass)
+    add_hacs_entity(hass, platform=platform)
     await setup_with_release(hass, aioclient_mock, mock_entry, version="0.4.3")  # GitHub knows a newer one than HACS does
     state = hass.states.get(ENTITY)
     assert state.attributes["installed_version"] == "0.4.1"  # HACS' view, "v" stripped
     assert state.attributes["latest_version"] == "0.4.3"  # the newest of GitHub and HACS
-    assert state.attributes["managed_by_hacs"] == HACS_ID and state.state == "on"
+    assert state.attributes["managed_by"] == HACS_ID and state.state == "on"
 
     installs = async_mock_service(hass, "update", "install")  # what HACS' own entity would receive
     entity = hass.data["update"].get_entity(ENTITY)
+    entity._context = Context(user_id="user-who-clicked")
     await entity.async_install(None, False)
     assert len(installs) == 1
+    assert installs[0].context.user_id == "user-who-clicked"  # the Marketplace checks who accepted its warning
     assert installs[0].data == {"entity_id": HACS_ID, "version": "v0.4.3"}
     assert not any("zipball" in str(url) for _, url, *_ in aioclient_mock.mock_calls)  # no second, separate download
     assert (fake_install / "__init__.py").read_text() == "# old code"  # HACS owns the files
@@ -283,7 +290,7 @@ async def test_hacs_entity_is_mirrored_and_install_is_delegated(hass, aioclient_
     assert ir.async_get(hass).async_get_issue(DOMAIN, "restart_required") is None  # HACS raises its own restart notice
 
 
-async def test_installing_in_hacs_updates_our_entity_without_a_second_install(hass, aioclient_mock, mock_entry):
+async def test_installing_in_the_package_manager_updates_our_entity_without_a_second_install(hass, aioclient_mock, mock_entry):
     add_hacs_entity(hass, installed="v0.4.1", latest="v0.4.2")
     await setup_with_release(hass, aioclient_mock, mock_entry, version="0.4.2")
     assert hass.states.get(ENTITY).state == "on"
@@ -295,15 +302,15 @@ async def test_installing_in_hacs_updates_our_entity_without_a_second_install(ha
     assert state.state == "off" and state.attributes["installed_version"] == "0.4.2"  # nothing left to install
 
 
-async def test_other_update_entities_are_not_mistaken_for_hacs(hass, aioclient_mock, mock_entry):
+async def test_other_update_entities_are_not_mistaken_for_a_package_manager(hass, aioclient_mock, mock_entry):
     add_hacs_entity(hass, platform="something_else")
     await setup_with_release(hass, aioclient_mock, mock_entry, version="9.9.9")
-    assert hass.states.get(ENTITY).attributes["managed_by_hacs"] is None
+    assert hass.states.get(ENTITY).attributes["managed_by"] is None
     hass.states.async_remove(HACS_ID)
     add_hacs_entity(hass, url="https://github.com/someone/else/releases/v1")
     hass.states.async_set(HACS_ID, "on", {"installed_version": "v1", "latest_version": "v2", "release_url": "https://github.com/someone/else/releases/v2"})
     await hass.async_block_till_done()
-    assert hass.states.get(ENTITY).attributes["managed_by_hacs"] is None
+    assert hass.states.get(ENTITY).attributes["managed_by"] is None
 
 
 async def test_snapshot_tells_the_panel_which_update_entity_is_ours(hass, aioclient_mock, mock_entry, hass_ws_client):

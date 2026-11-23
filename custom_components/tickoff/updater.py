@@ -167,7 +167,7 @@ async def async_install(hass: HomeAssistant, version: str) -> None:
     files = await hass.async_add_executor_job(extract_release, data, version)
     target = integration_dir()
     staging = staging_root(hass)
-    old_version = installed_version()
+    old_version = await hass.async_add_executor_job(installed_version)
     try:
         await hass.async_add_executor_job(
             install_files, files, target, backup_root(hass), staging, old_version

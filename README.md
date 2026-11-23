@@ -9,7 +9,7 @@ One place for all your tasks, inside Home Assistant: no cloud, no account, no ot
 item to the sidebar** (today, upcoming, all, completed, per tag), a **dashboard card**, a standard `todo` entity
 (works in the Companion app and with Assist), count sensors, and **due-date notifications to Telegram or your phone**.
 
-> **Status: early release (v0.4.4).** Automated tests cover the backend and the UI (see below), but Tickoff has not
+> **Status: early release (v0.4.5).** Automated tests cover the backend and the UI (see below), but Tickoff has not
 > been used for long in a real Home Assistant yet. Back up before you try it and please report problems.
 
 ## What it does
@@ -100,9 +100,11 @@ on the integration page and in **Tickoff → Settings → Updates**.
   the files in `custom_components/tickoff`. The previous version is kept in `.storage/tickoff_backup/<version>` for a
   manual rollback; a failed swap is rolled back automatically.
 - After installing, a **repair** asks you to restart Home Assistant (one click); the new version runs after the restart.
-- **Installed through HACS?** Then HACS has its own update entity for Tickoff (`update.tickoff_update`) next to Tickoff's
-  (`update.tickoff`). They never need two installs: Tickoff's entity mirrors HACS' versions and its **Install** hands the
-  job to HACS, and installing in HACS updates Tickoff's entity too. Without HACS, Tickoff installs the update itself.
+- **Installed through the Marketplace or HACS?** Home Assistant 2026.11's built-in Marketplace and HACS both create their
+  own update entity for Tickoff (for example `update.tickoff`) next to Tickoff's own (`update.tickoff_update`). You never
+  need two installs: Tickoff's entity mirrors the package manager's versions, its **Install** hands the job to the
+  Marketplace/HACS (you get one restart notice), and installing in the Marketplace/HACS updates Tickoff's entity too.
+  Without a package manager, Tickoff installs the update itself.
 - The archive is fetched over HTTPS from GitHub; GitHub offers no checksum for source archives, so that is the
   trust anchor.
 

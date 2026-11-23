@@ -28,7 +28,10 @@ _LOGGER = logging.getLogger(__name__)
 
 CHECK_INTERVAL = timedelta(hours=6)
 ISSUE_RESTART = "restart_required"
-HACS_RELEASE_PREFIX = f"https://github.com/{REPO}/"
+# Package managers that may manage Tickoff: HACS and the Marketplace built into Home Assistant 2026.11+.
+# Both create an update entity for it whose release_url points at this repository.
+MANAGER_PLATFORMS = ("hacs", "marketplace")
+MANAGER_RELEASE_PREFIX = f"https://github.com/{REPO}/"
 
 
 def _plain(version: str | None) -> str | None:
@@ -65,7 +68,8 @@ async def async_setup_entry(
         update_interval=CHECK_INTERVAL,
     )
     await coordinator.async_refresh()  # never blocks or fails the setup: GitHub may be unreachable
-    async_add_entities([TickoffUpdateEntity(coordinator, entry)])
+    installed = await hass.async_add_executor_job(installed_version)  # reads manifest.json: not in the event loop
+    async_add_entities([TickoffUpdateEntity(coordinator, entry, installed)])
 
 
 def _fetch(hass: HomeAssistant):
@@ -88,12 +92,12 @@ class TickoffUpdateEntity(CoordinatorEntity[DataUpdateCoordinator[dict[str, Any]
     _attr_title = "Tickoff"
     _attr_supported_features = UpdateEntityFeature.INSTALL | UpdateEntityFeature.RELEASE_NOTES
 
-    def __init__(self, coordinator: DataUpdateCoordinator[dict[str, Any] | None], entry: TickoffConfigEntry) -> None:
+    def __init__(self, coordinator: DataUpdateCoordinator[dict[str, Any] | None], entry: TickoffConfigEntry, installed: str) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_update"
         self.internal_integration_suggested_object_id = "tickoff"  # update.tickoff (HACS owns update.tickoff_update)
         self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, entry.entry_id)}, name="Tickoff")
-        self._installed = installed_version()
+        self._installed = installed
         self._restart_pending = False
 
     async def async_added_to_hass(self) -> None:
@@ -108,15 +112,15 @@ class TickoffUpdateEntity(CoordinatorEntity[DataUpdateCoordinator[dict[str, Any]
             self.hass.bus.async_listen(EVENT_STATE_CHANGED, _hacs_changed, event_filter=_is_update_event)
         )
 
-    # ---- HACS: when HACS manages Tickoff it owns the install, so there is only ever one install ----
+    # ---- HACS / Marketplace: when a package manager manages Tickoff it owns the install, so there is only ever one ----
 
     def _is_hacs_state(self, state: State) -> bool:
         if state.domain != "update" or state.entity_id == self.entity_id:
             return False
-        if not str(state.attributes.get("release_url") or "").startswith(HACS_RELEASE_PREFIX):
+        if not str(state.attributes.get("release_url") or "").startswith(MANAGER_RELEASE_PREFIX):
             return False
         entry = er.async_get(self.hass).async_get(state.entity_id)
-        return entry is not None and entry.platform == "hacs"
+        return entry is not None and entry.platform in MANAGER_PLATFORMS
 
     def _hacs_state(self) -> State | None:
         return next((s for s in self.hass.states.async_all("update") if self._is_hacs_state(s)), None)
@@ -161,7 +165,7 @@ class TickoffUpdateEntity(CoordinatorEntity[DataUpdateCoordinator[dict[str, Any]
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         hacs = self._hacs_state()
-        return {"restart_required": self._restart_pending, "managed_by_hacs": hacs.entity_id if hacs else None}
+        return {"restart_required": self._restart_pending, "managed_by": hacs.entity_id if hacs else None}
 
     async def async_install(self, version: str | None, backup: bool, **kwargs: Any) -> None:
         """Install the latest release; Home Assistant has to be restarted afterwards."""
@@ -170,10 +174,15 @@ class TickoffUpdateEntity(CoordinatorEntity[DataUpdateCoordinator[dict[str, Any]
             return
         hacs = self._hacs_state()
         if hacs is not None:
-            # HACS manages this install: let HACS do it (it also raises its own restart notice), so the
-            # two update entities never disagree and nothing has to be installed twice.
+            # HACS or the Marketplace manages this install: let it do the work (it also raises its own restart
+            # notice and keeps its own records), so the two update entities never disagree and nothing has to be
+            # installed twice. The user context is passed on: the Marketplace checks who accepted its warning.
             await self.hass.services.async_call(
-                "update", "install", {"entity_id": hacs.entity_id, "version": f"v{target}"}, blocking=True
+                "update",
+                "install",
+                {"entity_id": hacs.entity_id, "version": f"v{target}"},
+                blocking=True,
+                context=self._context,
             )
             self._restart_pending = True
             self.async_write_ha_state()

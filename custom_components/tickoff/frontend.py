@@ -16,10 +16,14 @@ PANEL_FILE = "tickoff-panel.js"
 PANEL_PATH = "tickoff"
 
 
+def _read_version() -> str:
+    return json.loads((Path(__file__).parent / "manifest.json").read_text())["version"]
+
+
 async def async_setup_frontend(hass: HomeAssistant) -> None:
     """Serve www/, load the card on every dashboard and add the "Tickoff" sidebar panel."""
     www = Path(__file__).parent / "www"
-    version = json.loads((Path(__file__).parent / "manifest.json").read_text())["version"]
+    version = await hass.async_add_executor_job(_read_version)
     await hass.http.async_register_static_paths(
         [
             StaticPathConfig(f"{URL_BASE}/{name}", str(www / name), cache_headers=False)
