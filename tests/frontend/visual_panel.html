@@ -26,6 +26,7 @@
     tasks: [T("1", "Pay the electricity bill", { priority: 3, tags: ["work"], due_date: "2026-03-08", state: "overdue" }), T("2", "Call the dentist", { priority: 2, tags: ["home"], due_date: "2026-03-10", due_time: "14:30", state: "today" }), T("3", "Water the plants", { tags: ["garden"], due_date: "2026-03-10", state: "today" })] };
   const p = document.createElement("tickoff-panel"); document.body.appendChild(p);
   p.hass = { language: "en", locale: { language: "en", time_format: "24" }, user: { is_admin: true }, callService() {}, callWS: async () => ({}), connection: { subscribeMessage: async (cb) => { setTimeout(() => cb(snap), 0); return () => {}; } } };
-  p.narrow = false;
-  setTimeout(() => p._go(location.hash.slice(1) || "today"), 30);
+  const h = location.hash.slice(1);
+  p.narrow = h.startsWith("narrow-");
+  setTimeout(() => { p._go(h.replace("narrow-", "").replace("-open", "") || "all"); if (h.endsWith("-open")) { p._navOpen = true; p._render(); } }, 30);
 </script></body></html>

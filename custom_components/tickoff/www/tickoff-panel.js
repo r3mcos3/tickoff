@@ -10,7 +10,7 @@
   const I18N = {
     en: {
       title: "Tickoff", today: "Today", upcoming: "Upcoming", all: "All tasks", done: "Completed", tags: "Tags",
-      manage_tags: "Manage tags", settings: "Settings", menu: "Menu",
+      manage_tags: "Manage tags", settings: "Settings", menu: "Home Assistant menu", views: "Tickoff views",
       delete: "Delete", sure: "Sure?", save: "Save", cancel: "Cancel", create: "Create", rename: "Rename",
       new_tag: "New tag", used_in: "tasks", error: "Error", saved: "Saved",
       notifications: "Notifications", notify_intro: "Get a message when a task is due. Choose where it should go.",
@@ -25,7 +25,7 @@
     },
     nl: {
       title: "Tickoff", today: "Vandaag", upcoming: "Binnenkort", all: "Alle taken", done: "Voltooid", tags: "Tags",
-      manage_tags: "Tags beheren", settings: "Instellingen", menu: "Menu",
+      manage_tags: "Tags beheren", settings: "Instellingen", menu: "Home Assistant-menu", views: "Tickoff-weergaven",
       delete: "Verwijderen", sure: "Zeker?", save: "Opslaan", cancel: "Annuleren", create: "Aanmaken", rename: "Hernoemen",
       new_tag: "Nieuwe tag", used_in: "taken", error: "Fout", saved: "Opgeslagen",
       notifications: "Meldingen", notify_intro: "Krijg een bericht als een taak vervalt. Kies waar het heen moet.",
@@ -79,8 +79,11 @@
     nav hr { border: none; border-top: 1px solid var(--tk-line); margin: 8px 4px; }
     main { flex: 1; overflow-y: auto; padding: 16px; }
     .wrap { max-width: 760px; margin: 0 auto; }
-    .narrow nav { display: none; position: absolute; z-index: 5; top: 0; bottom: 0; box-shadow: 2px 0 12px rgba(0,0,0,.35); }
+    .narrow nav { display: none; position: absolute; z-index: 6; top: 0; bottom: 0; box-shadow: 2px 0 12px rgba(0,0,0,.35); max-width: 85vw; }
     .narrow nav.open { display: block; }
+    #scrim { display: none; position: absolute; inset: 0; z-index: 5; background: rgba(0,0,0,.4); }
+    #scrim.open { display: block; }
+    main { min-width: 0; }
     .box { background: var(--card-background-color, #fff); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; box-shadow: var(--ha-card-box-shadow, 0 1px 4px rgba(0,0,0,.18)); }
     .box h2 { margin: 0 0 4px; font-size: 1.2em; font-weight: 600; }
     .muted { color: var(--tk-muted); font-size: .92em; }
@@ -197,13 +200,19 @@
       const sr = this.shadowRoot;
       if (!this._shell) {
         sr.innerHTML = `<style>${CSS}</style>
-          <div class="bar"><button id="menu" title="${esc(t.menu)}"><ha-icon icon="mdi:menu"></ha-icon></button><h1></h1></div>
-          <div class="layout"><nav id="nav"></nav><main><div class="wrap"><div id="tools"></div><div id="body"></div></div></main></div>`;
+          <div class="bar"><button id="menu" title="${esc(t.menu)}"><ha-icon icon="mdi:menu"></ha-icon></button>
+            <h1></h1><button id="views" title="${esc(t.views)}"><ha-icon icon="mdi:format-list-bulleted"></ha-icon></button></div>
+          <div class="layout"><div id="scrim"></div><nav id="nav"></nav><main><div class="wrap"><div id="tools"></div><div id="body"></div></div></main></div>`;
         this._shell = true;
+        // The hamburger is always Home Assistant's own menu (on a phone that is the only way back to the rest of HA).
         sr.getElementById("menu").addEventListener("click", () => {
-          if (this._narrow) { this._navOpen = !this._navOpen; this._render(); }
-          else this.dispatchEvent(new Event("hass-toggle-menu", { bubbles: true, composed: true }));
+          this._navOpen = false;
+          this.dispatchEvent(new Event("hass-toggle-menu", { bubbles: true, composed: true }));
+          this._render();
         });
+        // Tickoff's own views (today, all, tags, settings) sit in a drawer on narrow screens.
+        sr.getElementById("views").addEventListener("click", () => { this._navOpen = !this._navOpen; this._render(); });
+        sr.getElementById("scrim").addEventListener("click", () => { this._navOpen = false; this._render(); });
         sr.getElementById("nav").addEventListener("click", (e) => this._onNav(e));
         const main = sr.querySelector("main");
         main.addEventListener("click", (e) => this._onContent(e));
@@ -213,6 +222,8 @@
       sr.querySelector("h1").textContent = t.title;
       sr.querySelector(".layout").classList.toggle("narrow", !!this._narrow);
       sr.getElementById("nav").classList.toggle("open", this._navOpen);
+      sr.getElementById("scrim").classList.toggle("open", this._navOpen && !!this._narrow);
+      sr.getElementById("views").style.display = this._narrow ? "" : "none";
       const view = this._view;
       this._renderNav(view);
       this._renderContent(view);

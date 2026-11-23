@@ -176,17 +176,29 @@
     R.user_cannot_install = !sr2.querySelector('[data-act="installupdate"]') && sr2.getElementById("body").textContent.includes("is available");
     p2.remove();
 
-    // narrow: nav hidden until the menu button is used; wide: the button toggles the HA sidebar
+    // narrow (phone): the HA menu button is always there; Tickoff's own views open from a separate button
     const p3 = document.createElement("tickoff-panel");
     document.body.appendChild(p3);
+    let narrowToggles = 0;
+    p3.addEventListener("hass-toggle-menu", () => { narrowToggles++; });
     p3.narrow = true; p3.hass = mkHass(true, "en"); await tick(); await tick();
-    const nav3 = p3.shadowRoot.getElementById("nav");
-    R.narrow_hidden = p3.shadowRoot.querySelector(".layout").classList.contains("narrow") && !nav3.classList.contains("open");
-    p3.shadowRoot.getElementById("menu").click();
-    R.narrow_open = nav3.classList.contains("open");
+    const sr3 = p3.shadowRoot, nav3 = sr3.getElementById("nav");
+    R.narrow_hidden = sr3.querySelector(".layout").classList.contains("narrow") && !nav3.classList.contains("open");
+    R.narrow_has_both_buttons = !!sr3.getElementById("menu") && sr3.getElementById("views").style.display !== "none" && sr3.getElementById("menu").title === "Home Assistant menu";
+    sr3.getElementById("menu").click();
+    R.narrow_menu_opens_home_assistant = narrowToggles === 1 && !nav3.classList.contains("open");
+    sr3.getElementById("views").click();
+    R.narrow_views_open = nav3.classList.contains("open") && sr3.getElementById("scrim").classList.contains("open");
+    sr3.getElementById("menu").click();
+    R.narrow_menu_also_closes_drawer = narrowToggles === 2 && !nav3.classList.contains("open");
+    sr3.getElementById("views").click();
+    sr3.getElementById("scrim").click();
+    R.narrow_scrim_closes = !nav3.classList.contains("open") && !sr3.getElementById("scrim").classList.contains("open");
+    sr3.getElementById("views").click();
     nav3.querySelector('[data-view="tags"]').click();
     R.narrow_closes = !nav3.classList.contains("open");
     p3.remove();
+    // wide: the same HA menu button; no views button (the nav is always visible)
     let toggled = false;
     const p4 = document.createElement("tickoff-panel");
     document.body.appendChild(p4);
@@ -194,6 +206,7 @@
     p4.hass = mkHass(true, "en"); await tick();
     p4.shadowRoot.getElementById("menu").click();
     R.menu_toggles_sidebar = toggled;
+    R.wide_has_no_views_button = p4.shadowRoot.getElementById("views").style.display === "none";
     p4.remove();
 
     // dutch

@@ -271,8 +271,11 @@
       border: 1px solid var(--tk-line); border-radius: 10px; padding: 8px 10px; min-width: 0; }
     input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary-color); outline-offset: -1px; }
     ha-icon { --mdc-icon-size: 20px; display: inline-flex; }
-    .head { display: flex; align-items: center; gap: 10px; padding: 14px 16px 6px; }
-    .head h2 { margin: 0; flex: 1; font-size: 1.25em; font-weight: 600; letter-spacing: .1px; }
+    :host { container-type: inline-size; }
+    .head { display: flex; align-items: center; gap: 6px 10px; padding: 14px 16px 6px; flex-wrap: wrap; }
+    .head h2 { margin: 0; flex: 1 1 auto; font-size: 1.25em; font-weight: 600; letter-spacing: .1px; white-space: nowrap; }
+    #headbtns { display: inline-flex; align-items: center; gap: 6px; }
+    @container (max-width: 520px) { #pills { order: 3; flex-basis: 100%; } }
     .pill { font-size: .78em; font-weight: 600; padding: 2px 10px; border-radius: 999px; background: var(--secondary-background-color, #eee); color: var(--tk-muted); }
     .pill.bad { background: color-mix(in srgb, var(--tk-bad) 16%, transparent); color: var(--tk-bad); }
     .pill.warn { background: color-mix(in srgb, var(--tk-warn) 22%, transparent); color: color-mix(in srgb, var(--tk-warn) 70%, #000); }
@@ -286,7 +289,7 @@
     .addbar:focus-within { outline: 2px solid var(--primary-color); }
     .addbar > ha-icon { color: var(--tk-muted); }
     .addbar input { flex: 1; border: none; background: transparent; padding: 10px 4px; outline: none !important; }
-    .addbtn { background: var(--primary-color); color: var(--text-primary-color, #fff); padding: 7px 14px; font-weight: 600; border-radius: 10px; display: inline-flex; align-items: center; gap: 4px; }
+    .addbtn { background: var(--primary-color); color: var(--text-primary-color, #fff); padding: 7px 14px; font-weight: 600; border-radius: 10px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
     .addbtn:hover { filter: brightness(1.08); }
     .subrow .subtitle { flex: 1; padding: 5px 8px; font-size: .95rem; }
     .addbtn:disabled { opacity: .4; cursor: default; }

@@ -9,7 +9,7 @@ One place for all your tasks, inside Home Assistant: no cloud, no account, no ot
 item to the sidebar** (today, upcoming, all, completed, per tag), a **dashboard card**, a standard `todo` entity
 (works in the Companion app and with Assist), count sensors, and **due-date notifications to Telegram or your phone**.
 
-> **Status: early release (v0.4.3).** Automated tests cover the backend and the UI (see below), but Tickoff has not
+> **Status: early release (v0.4.4).** Automated tests cover the backend and the UI (see below), but Tickoff has not
 > been used for long in a real Home Assistant yet. Back up before you try it and please report problems.
 
 ## What it does
@@ -70,7 +70,7 @@ settings are carried over as notification targets. Make a backup first.
 | **Tags** (in the menu) | One view per tag; **Manage tags** changes colour, renames, deletes (applies to every task) |
 | **Settings** | Where notifications go (Telegram, phone, ...), the notification time and a test button |
 
-The panel always opens on **All tasks**. Everyone can work with tasks; only administrators change the settings.
+The panel always opens on **All tasks**. On a phone, the ☰ button at the top left is Home Assistant's own menu (your way back to the rest of Home Assistant) and the list button at the top right opens Tickoff's views. Everyone can work with tasks; only administrators change the settings.
 
 ## Notifications (Telegram and more)
 

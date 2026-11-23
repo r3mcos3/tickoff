@@ -43,7 +43,7 @@ Doel: in je eigen HA controleren wat de automatische tests niet kunnen. Maak voo
 - [ ] Sorteer-knop rechtsboven (⇅): handmatige volgorde, slepen werkt en blijft na verversen.
 - [ ] Tagfilter (chips) en 🎨 kleur wijzigen; ook onder "Tags beheren": kleur, hernoemen, verwijderen, nieuw.
 - [ ] Zonder taken: vriendelijke lege staat. Donkere modus oogt goed.
-- [ ] Telefoon (Companion app): menuknop opent de navigatie; kaart bruikbaar. Bijzondere aandacht voor het bewerkvenster en slepen met touch.
+- [ ] Telefoon (Companion app): linksboven (☰) opent het **Home Assistant-menu** (zo kom je terug naar de rest van HA), rechtsboven de lijst-knop opent Tickoffs weergaven (tik naast het menu om te sluiten); de kaart-kop past op de breedte (titel, tellers en "+ Nieuwe taak" lopen niet door elkaar). Bijzondere aandacht voor het bewerkvenster en slepen met touch.
 
 ## Update-entiteit
 
