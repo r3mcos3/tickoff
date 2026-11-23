@@ -9,7 +9,7 @@ One place for all your tasks, inside Home Assistant: no cloud, no account, no ot
 item to the sidebar** (today, upcoming, all, completed, per tag), a **dashboard card**, a standard `todo` entity
 (works in the Companion app and with Assist), count sensors, and **due-date notifications to Telegram or your phone**.
 
-> **Status: early release (v0.3.0).** Automated tests cover the backend and the UI (see below), but Tickoff has not
+> **Status: early release (v0.4.0).** Automated tests cover the backend and the UI (see below), but Tickoff has not
 > been used for long in a real Home Assistant yet. Back up before you try it and please report problems.
 
 ## What it does
@@ -84,6 +84,23 @@ Open **Tickoff → Settings → Notifications** and tick where messages should g
 
 You can also choose targets in the integration's **Configure** button. For custom handling, listen for the
 `tickoff_task_due` event (or use the blueprint below).
+
+## Updating from Home Assistant
+
+Tickoff has an **update entity** (`update.tickoff_update`), so new versions show up under **Settings → System → Updates**,
+on the integration page and in **Tickoff → Settings → Updates**.
+
+- It checks the GitHub releases of this repository every 6 hours (no account needed; if GitHub is unreachable
+  Tickoff keeps working and simply shows no update).
+- **Install** downloads the release from `github.com/r3mcos3/tickoff` (only that repository), checks it (it must be
+  the Tickoff integration with exactly the announced version, no unsafe paths, size limits) and only then replaces
+  the files in `custom_components/tickoff`. The previous version is kept in `.storage/tickoff_backup/<version>` for a
+  manual rollback; a failed swap is rolled back automatically.
+- After installing, a **repair** asks you to restart Home Assistant (one click); the new version runs after the restart.
+- Installed through HACS? HACS shows its own update entity too. Either works; after using Tickoff's, HACS may keep
+  offering the same version until it refreshes. Do not install the same update twice.
+- The archive is fetched over HTTPS from GitHub; GitHub offers no checksum for source archives, so that is the
+  trust anchor.
 
 ## Dashboard card
 

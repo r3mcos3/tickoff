@@ -274,5 +274,18 @@
         }
       }
     }
+  },
+  "issues": {
+    "restart_required": {
+      "title": "Restart Home Assistant to finish updating Tickoff",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Restart Home Assistant?",
+            "description": "Tickoff {version} has been installed. Restart Home Assistant to start using it. The previous version is kept as a backup in .storage/tickoff_backup."
+          }
+        }
+      }
+    }
   }
 }

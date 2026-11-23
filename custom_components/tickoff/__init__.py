@@ -6,6 +6,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN
@@ -17,7 +18,7 @@ from .storage import TaskStore
 from .tags import async_get_tag_registry
 from .websocket_api import async_register_websocket
 
-PLATFORMS: list[Platform] = [Platform.TODO, Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.TODO, Platform.SENSOR, Platform.UPDATE]
 
 type TickoffConfigEntry = ConfigEntry[TaskStore]
 
@@ -26,6 +27,8 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Migrate old multi-list data, register services, websocket commands and the UI."""
+    # a restart is the moment an installed update is really running
+    ir.async_delete_issue(hass, DOMAIN, "restart_required")
     await async_migrate_legacy(hass)
     async_register_services(hass)
     async_register_websocket(hass)

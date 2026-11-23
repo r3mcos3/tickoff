@@ -26,8 +26,9 @@
         T("d", "Done", { status: "done", state: null }),
       ],
     };
+    let updState = { state: "on", attributes: { installed_version: "0.3.1", latest_version: "0.4.0", release_url: "https://github.com/r3mcos3/tickoff/releases/tag/v0.4.0", release_summary: "Adds the update entity", in_progress: false, restart_required: false } };
     const mkHass = (admin, lang) => ({
-      language: lang, locale: { language: lang, time_format: "24" }, user: { is_admin: admin },
+      language: lang, states: { "update.tickoff_update": updState }, locale: { language: lang, time_format: "24" }, user: { is_admin: admin },
       callService: (d, s, data, target) => { svc.push({ d, s, data, target }); return Promise.resolve(); },
       callWS: (msg) => { ws.push(msg); return Promise.resolve(msg.type === "tickoff/test_notify" ? testResult : {}); },
       connection: { subscribeMessage: async (cb) => { pushers.push(cb); setTimeout(() => cb(snap), 0); return () => { unsub++; }; } },
@@ -128,6 +129,24 @@
     R.test_flow = ws.length === w0 + 2 && ws.at(-2).type === "tickoff/settings_set" && ws.at(-2).notify_targets.length === 1 && ws.at(-1).type === "tickoff/test_notify";
     R.test_flash = sr.querySelector(".ok") && sr.querySelector(".ok").textContent.includes("2 target");
 
+    // updates box in Settings
+    const box = () => sr.getElementById("body").textContent.replace(/\s+/g, " ");
+    R.update_available_shown = box().includes("Version 0.4.0 is available") && box().includes("Installed version: 0.3.1") && box().includes("Adds the update entity");
+    R.update_release_link = sr.querySelector('a[href*="releases/tag/v0.4.0"]') !== null;
+    R.settings_nav_dot = sr.querySelector('nav [data-view="settings"] .n').textContent === "●";
+    const s0 = svc.length;
+    click('[data-act="installupdate"]'); await tick(); await tick();
+    R.install_calls_update_service = svc[s0].d === "update" && svc[s0].s === "install" && svc[s0].data.entity_id === "update.tickoff_update";
+    // state changes are picked up without navigating away
+    updState = { state: "off", attributes: { ...updState.attributes, installed_version: "0.4.0", latest_version: "0.4.0", restart_required: true } };
+    panel.hass = { ...mkHass(true, "en"), states: { "update.tickoff_update": updState } }; await tick();
+    R.restart_needed_shown = box().includes("Restart Home Assistant") && !!sr.querySelector('a[href="/config/repairs"]') && !sr.querySelector('[data-act="installupdate"]');
+    updState = { state: "off", attributes: { ...updState.attributes, restart_required: false } };
+    panel.hass = { ...mkHass(true, "en"), states: { "update.tickoff_update": updState } }; await tick();
+    R.up_to_date_shown = box().includes("up to date") && !sr.querySelector('nav [data-view="settings"] .n');
+    updState = { state: "on", attributes: { ...updState.attributes, latest_version: "0.5.0" } };
+    panel.hass = { ...mkHass(true, "en"), states: { "update.tickoff_update": updState } }; await tick();
+
     // no targets: helpful hint
     const snapNone = { ...snap, notify_targets: [], settings: { notify_targets: [], notify_time: "08:00:00" } };
     pushers.forEach((p) => p(snapNone)); await tick();
@@ -142,6 +161,7 @@
     const sr2 = p2.shadowRoot;
     R.user_settings_readonly = !sr2.querySelector('[data-act="savesettings"]') && !sr2.querySelector('[data-act="testnotify"]')
       && [...sr2.querySelectorAll(".target input")].every((i) => i.disabled) && sr2.getElementById("settime").disabled;
+    R.user_cannot_install = !sr2.querySelector('[data-act="installupdate"]') && sr2.getElementById("body").textContent.includes("is available");
     p2.remove();
 
     // narrow: nav hidden until the menu button is used; wide: the button toggles the HA sidebar

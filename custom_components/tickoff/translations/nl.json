@@ -274,5 +274,18 @@
         }
       }
     }
+  },
+  "issues": {
+    "restart_required": {
+      "title": "Herstart Home Assistant om de Tickoff-update af te maken",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Home Assistant herstarten?",
+            "description": "Tickoff {version} is geïnstalleerd. Herstart Home Assistant om hem te gebruiken. De vorige versie blijft als back-up bewaard in .storage/tickoff_backup."
+          }
+        }
+      }
+    }
   }
 }

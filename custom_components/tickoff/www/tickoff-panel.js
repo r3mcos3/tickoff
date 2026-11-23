@@ -19,6 +19,9 @@
       notify_help: "Tasks with a date but no time are announced at this time; tasks with a time are announced at that time.",
       send_test: "Send test message", test_sent: "Test message sent to {n} target(s).", choose_first: "Choose at least one target first.",
       entity_kind: "Notify entity", service_kind: "Notify service", read_only: "Only administrators can change these settings.",
+      updates: "Updates", installed: "Installed version", up_to_date: "Tickoff is up to date.", update_available: "Version {v} is available.",
+      install_update: "Install update", installing: "Installing...", release_notes: "Release notes",
+      restart_needed: "The update is installed. Restart Home Assistant to start using it.", open_repairs: "Open Repairs",
     },
     nl: {
       title: "Tickoff", today: "Vandaag", upcoming: "Binnenkort", all: "Alle taken", done: "Voltooid", tags: "Tags",
@@ -31,6 +34,9 @@
       notify_help: "Taken met een datum maar zonder tijd worden op deze tijd gemeld; taken met een tijd op die tijd.",
       send_test: "Testbericht sturen", test_sent: "Testbericht gestuurd naar {n} doel(en).", choose_first: "Kies eerst minstens één doel.",
       entity_kind: "Notify-entiteit", service_kind: "Notify-service", read_only: "Alleen beheerders kunnen deze instellingen wijzigen.",
+      updates: "Updates", installed: "Geïnstalleerde versie", up_to_date: "Tickoff is up-to-date.", update_available: "Versie {v} is beschikbaar.",
+      install_update: "Update installeren", installing: "Installeren...", release_notes: "Release-notities",
+      restart_needed: "De update is geïnstalleerd. Herstart Home Assistant om hem te gebruiken.", open_repairs: "Open Reparaties",
     },
   };
 
@@ -123,6 +129,9 @@
       const lang = ((hass.locale && hass.locale.language) || hass.language || "en").slice(0, 2);
       this._t = I18N[lang] || I18N.en;
       if (this._card) this._card.hass = hass;
+      const upd = hass.states && hass.states["update.tickoff_update"];
+      const sig = upd ? upd.state + JSON.stringify(upd.attributes) : "";
+      if (sig !== this._updSig) { this._updSig = sig; if (this._rendered && this._snap) this._render(); }
       if (!this._unsub && !this._subscribing && this.isConnected) this._subscribe();
       if (!this._rendered) this._render();
     }
@@ -226,7 +235,8 @@
           html += `<div class="item ${view === "tag:" + name ? "active" : ""}" data-view="tag:${esc(name)}"><span class="dot" style="background:${esc(snap.tags[name].color)}"></span><span>${esc(name)}</span>${count ? `<span class="n">${count}</span>` : ""}</div>`;
         }
       }
-      html += "<hr>" + item("tags", "mdi:tag-multiple-outline", t.manage_tags) + item("settings", "mdi:cog-outline", t.settings);
+      const upd = this._hass && this._hass.states && this._hass.states["update.tickoff_update"];
+      html += "<hr>" + item("tags", "mdi:tag-multiple-outline", t.manage_tags) + item("settings", "mdi:cog-outline", t.settings, upd && upd.state === "on" ? "●" : "", false);
       this.shadowRoot.getElementById("nav").innerHTML = html;
     }
 
@@ -282,6 +292,24 @@
       </div>`;
     }
 
+    _updateBox() {
+      const t = this._t;
+      const st = this._hass && this._hass.states && this._hass.states["update.tickoff_update"];
+      if (!st) return "";
+      const a = st.attributes;
+      const available = st.state === "on";
+      const busy = !!a.in_progress || this._installing;
+      let body;
+      if (a.restart_required) body = `<p>${esc(t.restart_needed)}</p><p><a href="/config/repairs">${esc(t.open_repairs)}</a></p>`;
+      else if (available) {
+        body = `<p><b>${esc(t.update_available.replace("{v}", a.latest_version))}</b>
+          ${a.release_url ? `<a href="${esc(a.release_url)}" target="_blank" rel="noopener">${esc(t.release_notes)}</a>` : ""}</p>
+          ${a.release_summary ? `<p class="muted">${esc(a.release_summary)}</p>` : ""}
+          ${this._admin ? `<button class="btn primary" data-act="installupdate" ${busy ? "disabled" : ""}>${esc(busy ? t.installing : t.install_update)}</button>` : ""}`;
+      } else body = `<p class="ok">${esc(t.up_to_date)}</p>`;
+      return `<div class="box"><h2>${esc(t.updates)}</h2><div class="muted">${esc(t.installed)}: ${esc(a.installed_version)}</div>${body}</div>`;
+    }
+
     _settingsView(snap) {
       const t = this._t;
       const s = snap.settings || {};
@@ -296,7 +324,7 @@
           <span class="name">${esc(x.label.replace(/^Telegram · /, ""))}<div class="kind">${esc(x.value.startsWith("entity:") ? t.entity_kind : t.service_kind)}</div></span>
           ${x.telegram ? `<span class="badge">${esc(t.telegram)}</span>` : ""}</label>`;
       }).join("");
-      return `<div class="box"><h2>${esc(t.notifications)}</h2><div class="muted">${esc(t.notify_intro)}</div>
+      return `${this._updateBox()}<div class="box"><h2>${esc(t.notifications)}</h2><div class="muted">${esc(t.notify_intro)}</div>
         ${rows || `<div class="empty">${esc(t.no_targets)}</div>`}
         <div class="field">${esc(t.notify_time)}<input id="settime" type="text" inputmode="numeric" maxlength="5" placeholder="${esc(t.time_ph)}" value="${esc((s.notify_time || "08:00:00").slice(0, 5))}" ${admin ? "" : "disabled"}></div>
         <p class="muted">${esc(t.notify_help)}</p>
@@ -366,6 +394,13 @@
         } else if (act === "tagadd") {
           const name = $("newtagname").value.trim();
           if (name) await this._hass.callService("tickoff", "set_tag", { name, color: $("newtagcolor").value });
+        } else if (act === "installupdate") {
+          this._installing = true;
+          this._render();
+          try { await this._hass.callService("update", "install", { entity_id: "update.tickoff_update" }); }
+          catch (e) { this._error = (e && e.message) || String(e); }
+          this._installing = false;
+          this._render();
         } else if (act === "savesettings") {
           await this._save();
           this._flash = t.saved;

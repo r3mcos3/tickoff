@@ -9,6 +9,7 @@ Doel: in je eigen HA controleren wat de automatische tests niet kunnen. Maak voo
 | Backend (config flow, opslag, todo-entiteit, services, tags, herhaling, sensoren, meldingen, meldingsdoelen, websocket, migratie van oude lijsten) | pytest met `pytest-homeassistant-custom-component` op **HA 2026.10.4** | **Niet** op HA 2026.11 (testbibliotheek nog niet beschikbaar) en niet in een echte HA. |
 | Kaart en zijbalk-paneel (renderen, snel toevoegen, bewerken, slepen, tags, instellingen, Telegram-keuze, niet-beheerder, smal scherm, Nederlands) | Echte headless Chromium met een mock van `hass` (~140 controles) plus screenshots bekeken | Geen echte HA-frontend: de iconen (`ha-icon`), `ha-card`, `ha-form` en het kaartkiezer-menu zijn nagebootst. Geen touch/mobiel. |
 | Telegram | Tests met een nagebootste notify-entiteit en `notify.send_message` | **Niet** met een echte Telegram-bot: dat moet jij controleren. |
+| Update-entiteit (release controleren, installeren met controles, back-up, terugdraaien bij fout, herstartmelding) | pytest met nagebootste GitHub-antwoorden en een tijdelijke kopie van de integratie | Geen echte download van GitHub, geen echte HA-herstart. |
 | Blueprint | Alleen YAML-syntaxis | Niet geïmporteerd in HA. |
 | Marketplace-installatie | Niet getest | Pas mogelijk na publicatie. |
 
@@ -40,6 +41,15 @@ Doel: in je eigen HA controleren wat de automatische tests niet kunnen. Maak voo
 - [ ] Tagfilter (chips) en 🎨 kleur wijzigen; ook onder "Tags beheren": kleur, hernoemen, verwijderen, nieuw.
 - [ ] Zonder taken: vriendelijke lege staat. Donkere modus oogt goed.
 - [ ] Telefoon (Companion app): menuknop opent de navigatie; kaart bruikbaar. Bijzondere aandacht voor het bewerkvenster en slepen met touch.
+
+## Update-entiteit
+
+- [ ] `update.tickoff_update` bestaat (Instellingen → Systeem → Updates en op de integratiepagina). Bij een nieuwere release op GitHub staat hij op "beschikbaar" met release-notities; staat HA op de nieuwste, dan "up-to-date".
+- [ ] Tickoff → Instellingen → Updates toont versie en knop **Update installeren** (alleen beheerder); in het menu staat een stip bij Instellingen als er een update is.
+- [ ] Installeren: na afloop staat er een melding onder Instellingen → Systeem → Reparaties ("Herstart Home Assistant …") met een knop die herstart. Na de herstart is de nieuwe versie actief en de melding weg. De vorige versie staat in `/config/.storage/tickoff_backup/<versie>/`.
+- [ ] Zonder internet blijft Tickoff werken (de update-entiteit meldt dan gewoon geen update).
+- [ ] Gebruik je HACS? Controleer dat HACS na een zelf-update niet in de war raakt (hij kan dezelfde versie nog even aanbieden).
+- **Niet getest:** een echte update van GitHub (alleen met nagebootste downloads en een tijdelijke map), de reparatie-herstartknop in de echte HA-frontend.
 
 ## Datum en tijd
 
