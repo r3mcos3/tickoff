@@ -9,18 +9,21 @@ One place for all your tasks, inside Home Assistant: no cloud, no account, no ot
 item to the sidebar** (today, upcoming, all, completed, per tag), a **dashboard card**, a standard `todo` entity
 (works in the Companion app and with Assist), count sensors, and **due-date notifications to Telegram or your phone**.
 
-> **Status: early release (v0.4.0).** Automated tests cover the backend and the UI (see below), but Tickoff has not
+> **Status: early release (v0.4.1).** Automated tests cover the backend and the UI (see below), but Tickoff has not
 > been used for long in a real Home Assistant yet. Back up before you try it and please report problems.
 
 ## What it does
 
 - **Just tasks, no lists.** One collection; organise with tags and smart views.
-- **Quick add**: type `Call mom tomorrow 14:30 #family !high` and Tickoff understands the date, time, tag and priority
-  (also Dutch: `morgen`, `vrijdag`, `over 3 dagen`, `!hoog`, `elke week`, or a date such as `15-03`). A preview shows what it understood.
+- **New task in a modal**: the **+ New task** button opens a window with everything in one place: title, notes, **subtasks**,
+  due date and time, priority, tags and repeat. The title understands quick-add words: type `Call mom tomorrow 14:30 #family !high` and Tickoff understands the date, time, tag and priority
+  (also Dutch: `morgen`, `vrijdag`, `over 3 dagen`, `!hoog`, `elke week`, or a date such as `15-03`). A preview shows what it understood; anything you fill in yourself wins over the words in the title.
 - **Smart views**: Today (overdue + today), Upcoming (per day), All tasks (grouped: overdue, today, upcoming, no date,
   completed), Completed, and one view per tag. Optional manual order with drag & drop.
-- **Tasks**: title, notes, due date with optional time, priority, tags with colours (one global register), subtasks
-  with progress, snooze to tomorrow, history.
+- **Tasks**: title, notes, due date with optional time, priority, tags with colours (one global register), snooze to
+  tomorrow, history.
+- **Subtasks**: add them while creating a task or later in the edit window (add, rename, tick, remove), with a progress bar
+  in the list. Ticking the last subtask completes the task; recurring tasks reset their subtasks.
 - **Recurring tasks** with rollover when you tick them off: daily, weekly (chosen weekdays), monthly, yearly, or
   *N days after completing*. Late ticking never creates a backlog and monthly tasks don't drift (31st → 28th → 31st).
 - **Notifications** on the due date, **once per task**, also across restarts: choose one or more targets (**Telegram**,
@@ -124,13 +127,13 @@ compact: true
 | `title` | by view | Card title |
 | `tags` | all | Only tasks with one of these tags |
 | `show_completed` | `true` | Completed section in `all` |
-| `show_add` | `true` | Quick-add field |
+| `show_add` | `true` | The **+ New task** button |
 | `manual` | `false` | Manual order with drag & drop (also a button in the card header) |
 | `read_only` | `false` | No editing, ticking or deleting |
 | `compact` | `false` | Tighter rows |
 | `hide_when_empty` | `false` | Hide the card when there is nothing to show |
 
-In the card: tick a task, tap it for notes, subtasks and history, ⏰ snooze, ✎ edit sheet (due date shortcuts,
+In the card: tick a task, tap it for notes, subtasks and history, ⏰ snooze, ✎ edit window (subtasks, due date shortcuts,
 priority, tags, recurrence), 🗑 delete (second tap confirms), tap a tag chip to filter, 🎨 for tag colours. Times follow
 your 12/24-hour profile setting.
 

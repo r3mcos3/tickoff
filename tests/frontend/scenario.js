@@ -187,32 +187,119 @@
     R.time_24h_even_with_12h_profile = sr.querySelector(".due.warn").textContent.includes("17:30") && !/\b(AM|PM)\b/i.test(sr.querySelector(".due.warn").textContent);
     hass.locale = { language: "en", time_format: "24" }; card.hass = hass;
 
-    // ---- quick add ----
-    const add = (id) => sr.getElementById(id);
-    R.add_disabled_when_empty = add("addbtn").disabled === true;
-    add("addtitle").value = "Call mom tomorrow 14:30 #family !high";
-    add("addtitle").dispatchEvent(new Event("input"));
-    const preview = sr.getElementById("preview").textContent;
-    R.preview = preview.includes("Tomorrow 14:30") && preview.includes("High") && preview.includes("family") && add("addbtn").disabled === false;
-    add("addbtn").click();
+    // ---- create a task in the modal ----
+    R.new_button = !!sr.querySelector('#headbtns [data-act="new"]') && sr.querySelector('#headbtns [data-act="new"]').textContent.includes("New task");
+    R.no_inline_adder = !sr.getElementById("adder") && !sr.getElementById("addtitle");
+    click('[data-act="new"]');
+    const nf = (n) => sheet().querySelector(`[data-f="${n}"]`);
+    R.new_modal_open = !!sheet() && sheet().dataset.mode === "new" && sheet().querySelector("h3").textContent === "New task" && nf("title").value === "" && !sheet().querySelector('[data-act="sheetdelete"]');
+    R.new_title_hint = nf("title").placeholder.includes("tomorrow");
+    R.save_button_label = sheet().querySelector('[data-act="save"]').textContent === "Add task";
+    nf("title").value = "Call mom tomorrow 14:30 #family !high";
+    nf("title").dispatchEvent(new Event("input", { bubbles: true }));
+    const preview = sr.getElementById("sheetpreview").textContent;
+    R.preview = preview.includes("Tomorrow 14:30") && preview.includes("High") && preview.includes("family");
+    // subtasks while creating
+    nf("newsub").value = "Find number";
+    nf("newsub").dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    nf("newsub").value = "Dial";
+    nf("newsub").dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    nf("newsub").value = "Talk";
+    nf("newsub").dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    R.draft_subtasks_listed = [...sheet().querySelectorAll("#sheetsubs .subtitle")].map((i) => i.value).join(",") === "Find number,Dial,Talk" && nf("newsub").value === "";
+    const subInput = sheet().querySelectorAll("#sheetsubs .subtitle")[1];
+    subInput.value = "Dial her"; subInput.dispatchEvent(new Event("change", { bubbles: true }));
+    sheet().querySelectorAll('#sheetsubs [data-act="sheetsubremove"]')[2].click();
+    R.draft_subtask_edit_remove = [...sheet().querySelectorAll("#sheetsubs .subtitle")].map((i) => i.value).join(",") === "Find number,Dial her";
+    // a snapshot push (every minute, or after any change) must not wipe what is being typed
+    snap.tasks.push(T("p1", "Pushed while typing")); push(snap);
+    R.modal_survives_push = !!sheet() && nf("title").value.startsWith("Call mom") && sheet().querySelectorAll("#sheetsubs .subtitle").length === 2;
+    snap.tasks = snap.tasks.filter((x) => x.id !== "p1"); push(snap);
+    nf("newsub").value = "Pending subtask not yet entered";
+    click('[data-act="save"]');
     const a = calls.at(-1);
     R.add_call = a.s === "add_task" && a.target.entity_id === "todo.tickoff" && a.data.title === "Call mom" && a.data.due_date === "2026-03-11"
       && a.data.due_time === "14:30:00" && a.data.priority === 3 && JSON.stringify(a.data.tags) === '["family"]';
-    R.add_cleared = add("addtitle").value === "" && sr.getElementById("preview").textContent === "";
-    add("addtitle").value = "Pay rent monthly"; add("addtitle").dispatchEvent(new Event("input")); add("adddate").value = "2026-04-01";
-    add("addtitle").dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
-    R.add_enter_recurrence = calls.at(-1).data.recurrence.type === "monthly" && calls.at(-1).data.due_date === "2026-04-01";
-    add("addtitle").value = "Bad date"; add("addtitle").dispatchEvent(new Event("input")); add("adddate").value = "99-99-2026";
-    const nBad = calls.length; add("addbtn").click();
-    R.add_invalid_date_blocked = calls.length === nBad && add("adddate").classList.contains("bad") && add("addtitle").value === "Bad date";
-    add("adddate").value = ""; add("adddate").classList.remove("bad");
-    add("addtitle").value = "   "; add("addtitle").dispatchEvent(new Event("input")); add("addbtn").click();
-    R.blank_ignored = calls.at(-1).data.title === "Pay rent";
-    add("addmore").click();
-    R.options_toggle = sr.getElementById("addextra").classList.contains("open");
-    add("addtitle").value = "With options"; add("addprio").value = "2"; add("addrec").value = "weekly"; add("adddate").value = "12-03-2026"; add("addtime").value = "7:30";
-    add("addbtn").disabled = false; add("addbtn").click();
-    R.add_options = calls.at(-1).data.due_time === "07:30:00" && calls.at(-1).data.due_date === "2026-03-12" && calls.at(-1).data.priority === 2 && JSON.stringify(calls.at(-1).data.recurrence) === '{"type":"weekly","interval":1,"weekdays":[3]}';
+    R.add_call_subtasks = JSON.stringify(a.data.subtasks) === '["Find number","Dial her","Pending subtask not yet entered"]';
+    R.modal_closes_after_add = !sheet();
+    // fields override what was parsed; recurrence and weekday; Enter in the title saves
+    click('[data-act="new"]');
+    nf("title").value = "Pay rent monthly";
+    nf("due_date").value = "01-04-2026"; nf("due_time").value = "7:30";
+    click('[data-act="prio"][data-v="2"]');
+    click('[data-act="sheettag"][data-tag="work"]');
+    nf("newtag").value = "money, bills";
+    nf("notes").value = " transfer before the 5th ";
+    nf("title").dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    const r = calls.at(-1);
+    R.add_fields_override = r.s === "add_task" && r.data.title === "Pay rent" && r.data.due_date === "2026-04-01" && r.data.due_time === "07:30:00" && r.data.priority === 2
+      && JSON.stringify(r.data.tags) === '["work","money","bills"]' && r.data.recurrence.type === "monthly" && r.data.notes === "transfer before the 5th" && r.data.subtasks === undefined;
+    R.enter_saves_and_closes = !sheet();
+    click('[data-act="new"]');
+    nf("rtype").value = "weekly"; nf("rint").value = "2"; sheet().querySelector('[data-f="wd"][value="4"]').checked = true;
+    nf("title").value = "Biweekly sync";
+    click('[data-act="save"]');
+    R.add_recurrence_form = JSON.stringify(calls.at(-1).data.recurrence) === '{"type":"weekly","interval":2,"weekdays":[4]}';
+    // blank title and invalid date block the save and keep the modal
+    click('[data-act="new"]');
+    const nBlank = calls.length;
+    nf("title").value = "   "; click('[data-act="save"]');
+    R.blank_title_blocked = calls.length === nBlank && !!sheet() && nf("title").classList.contains("bad");
+    nf("title").value = "Bad date"; nf("due_date").value = "99-99-2026"; click('[data-act="save"]');
+    R.invalid_date_blocked = calls.length === nBlank && nf("due_date").classList.contains("bad") && nf("title").value === "Bad date";
+    sheet().querySelector('[data-act="cancel"]').click();
+    R.cancel_discards = !sheet() && calls.length === nBlank;
+    click('[data-act="new"]');
+    sr.getElementById("overlay").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    R.escape_closes_new = !sheet();
+    click('[data-act="new"]');
+    sr.querySelector(".overlay").click();
+    R.backdrop_closes_new = !sheet();
+    click('[data-act="new"]');
+    R.draft_cleared_between_openings = sheet().querySelectorAll("#sheetsubs .subtitle").length === 0 && nf("title").value === "";
+    sheet().querySelector('[data-act="cancel"]').click();
+
+    // ---- subtasks of an existing task, edited in the modal ----
+    click('.task[data-task="a"] [data-act="edit"]');
+    R.edit_subtasks_listed = [...sheet().querySelectorAll("#sheetsubs .subtitle")].map((i) => i.value).join(",") === "front,back"
+      && sheet().querySelectorAll('#sheetsubs [data-act="sheetsubtoggle"]').length === 2;
+    sheet().querySelectorAll('#sheetsubs [data-act="sheetsubtoggle"]')[1].click();
+    R.edit_sub_toggle = calls.at(-1).s === "update_subtask" && calls.at(-1).data.subtask_id === "s2" && calls.at(-1).data.done === true;
+    nf("newsub").value = "third";
+    nf("newsub").dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    R.edit_sub_add = calls.at(-1).s === "add_subtask" && calls.at(-1).data.title === "third" && calls.at(-1).data.task_id === "a" && nf("newsub").value === "";
+    const si = sheet().querySelectorAll("#sheetsubs .subtitle")[0];
+    si.value = "front garden"; si.dispatchEvent(new Event("change", { bubbles: true }));
+    R.edit_sub_rename = calls.at(-1).s === "update_subtask" && calls.at(-1).data.subtask_id === "s1" && calls.at(-1).data.title === "front garden";
+    si.value = "  "; si.dispatchEvent(new Event("change", { bubbles: true }));
+    R.edit_sub_blank_removes = calls.at(-1).s === "remove_subtask" && calls.at(-1).data.subtask_id === "s1";
+    sheet().querySelectorAll('#sheetsubs [data-act="sheetsubremove"]')[1].click();
+    R.edit_sub_remove = calls.at(-1).s === "remove_subtask" && calls.at(-1).data.subtask_id === "s2";
+    // the server answers with the new subtask list: the modal shows it without losing the other fields
+    const taskA = snap.tasks.find((x) => x.id === "a");
+    taskA.subtasks = [{ id: "s2", title: "back", done: true }, { id: "s3", title: "third", done: false }];
+    nf("title").value = "Mow the lawn (edited)";
+    push(snap);
+    R.edit_sub_refreshed = [...sheet().querySelectorAll("#sheetsubs .subtitle")].map((i) => i.value).join(",") === "back,third"
+      && sheet().querySelector("#sheetsubs .subrow.done") !== null && nf("title").value === "Mow the lawn (edited)";
+    // while a subtask title is being typed the list is left alone
+    sheet().querySelectorAll("#sheetsubs .subtitle")[0].focus();
+    taskA.subtasks = [{ id: "s2", title: "back", done: true }, { id: "s3", title: "third", done: false }, { id: "s4", title: "fourth", done: false }];
+    push(snap);
+    R.edit_sub_not_rebuilt_while_typing = sheet().querySelectorAll("#sheetsubs .subtitle").length === 2;
+    sheet().querySelector('[data-f="newsub"]').focus();
+    push(snap);
+    R.edit_sub_catches_up = sheet().querySelectorAll("#sheetsubs .subtitle").length === 3;
+    nf("newsub").value = "typed but not entered";
+    click('[data-act="save"]');
+    R.save_adds_pending_subtask = calls.at(-1).s === "add_subtask" && calls.at(-1).data.title === "typed but not entered" && calls.at(-2).s === "update_task" && calls.at(-2).data.title === "Mow the lawn (edited)";
+    taskA.subtasks = [{ id: "s1", title: "front", done: true }, { id: "s2", title: "back", done: false }];
+    push(snap);
+    // a task that disappears closes its modal
+    click('.task[data-task="e"] [data-act="edit"]');
+    snap.tasks = snap.tasks.filter((x) => x.id !== "e"); push(snap);
+    R.vanished_task_closes_modal = !sheet();
+    snap.tasks.push(T("e", "Book hotel", { due_date: "2026-03-20", due_time: "09:00", state: "upcoming", tags: ["work"] })); push(snap);
 
     // ---- parser ----
     const P = (s) => window.__tickoff.parseQuickAdd(s, "2026-03-10");
@@ -270,7 +357,7 @@
     card.setConfig({ view: "upcoming" }); push(snap);
     R.upcoming_by_day = sections().length === 2 && sections()[0].toLowerCase().includes("tomorrow") && titles().join(",") === "Dentist,Book hotel,Call plumber";
     card.setConfig({ view: "done" }); push(snap);
-    R.done_view = titles().join(",") === "Old task" && sr.getElementById("adder").style.display === "none";
+    R.done_view = titles().join(",") === "Old task" && !sr.querySelector('[data-act="new"]');
     card.setConfig({ view: "today", title: "Now" }); push(snap);
     R.custom_title = sr.querySelector("h2").textContent === "Now";
     snap.tasks = snap.tasks.filter((t) => t.state !== "today" && t.state !== "overdue");
@@ -287,9 +374,13 @@
     card.setConfig({ compact: true }); push(snap);
     R.compact_class = !!sr.querySelector("ha-card.compact");
 
+    card.setConfig({ show_add: false }); push(snap);
+    R.show_add_false_hides_button = !sr.querySelector('[data-act="new"]');
+    card.setConfig({}); push(snap);
+
     // ---- read only ----
     card.setConfig({ read_only: true }); push(snap);
-    R.ro_no_actions = !sr.querySelector(".actions") && sr.getElementById("adder").style.display === "none" && !sr.querySelector('[data-act="manual"]');
+    R.ro_no_actions = !sr.querySelector(".actions") && !sr.querySelector('[data-act="new"]') && !sr.querySelector('[data-act="manual"]');
     R.ro_check_disabled = [...sr.querySelectorAll('.task [data-act="toggle"]')].every((c) => c.disabled);
     const n1 = calls.length;
     sr.querySelector('.task [data-act="toggle"]').click();
@@ -299,7 +390,7 @@
     hass.language = "nl"; hass.locale = { language: "nl", time_format: "12" };
     card.hass = hass;
     card.setConfig({}); push(snap);
-    R.dutch = sr.getElementById("addtitle").placeholder.startsWith("Taak toevoegen") && sr.querySelector("h2").textContent === "Alle taken";
+    R.dutch = sr.querySelector("h2").textContent === "Alle taken" && sr.querySelector('[data-act="new"]').textContent.includes("Nieuwe taak");
 
     // ---- not set up ----
     card.setConfig({}); push({ ...snap, entity_id: null, tasks: [] });

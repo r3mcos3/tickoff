@@ -24,6 +24,10 @@ card.setConfig({ view: h || "all", ...(location.hash.includes("manual") ? { manu
 card.hass = { language: "en", locale: { language: "en", time_format: "24" }, callService() {}, connection: { subscribeMessage: async (cb) => { setTimeout(() => cb(snap), 0); return () => {}; } } };
 setTimeout(() => {
   if (open) { card._open.add("4"); card._update(); }
-  if (sheet) { card._editing = "2"; card._update(); }
+  if (sheet) { card._editing = location.hash.includes("sheet4") ? "4" : "2"; card._update(); }
+  if (location.hash.includes("newmodal")) {
+    card._openNew(); card._draftSubs = ["Find the number", "Dial"]; card._renderDraftSubs();
+    const t = card.shadowRoot.querySelector('.sheet [data-f="title"]'); t.value = "Call mom tomorrow 14:30 #family !high"; t.dispatchEvent(new Event("input", { bubbles: true }));
+  }
   if (location.hash.includes("typing")) { const i = card.shadowRoot.getElementById("addtitle"); i.value = "Call mom tomorrow 14:30 #family !high"; i.dispatchEvent(new Event("input")); }
 }, 20);

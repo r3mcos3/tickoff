@@ -30,11 +30,13 @@ Doel: in je eigen HA controleren wat de automatische tests niet kunnen. Maak voo
 ## Zijbalk
 
 - [ ] Zijbalk-aantallen bij Vandaag, Binnenkort, Alle taken, Voltooid en per tag kloppen; rood bij achterstallig.
-- [ ] Snel toevoegen: typ `Bel mama morgen 14:30 #familie !hoog` — de voorvertoning toont datum, prioriteit en tag, na Enter bestaat de taak met die waarden en de tag verschijnt links.
-- [ ] Ook Engels: `Call mom tomorrow 14:30 #family !high`, en `Water plants every week`.
-- [ ] Opties-knop (⚙) in het toevoegveld: notities, datum, tijd, prioriteit, herhaling.
-- [ ] Taak aantikken: notities, subtaken, geschiedenis. Subtaak toevoegen/afvinken/verwijderen; de laatste subtaak afvinken voltooit de taak.
-- [ ] ✎ bewerken (venster): snelle datumknoppen (Vandaag/Morgen/Volgende week/Geen), prioriteit, tags aan/uit en nieuwe tag, herhaling; Opslaan, Annuleren, Esc en buiten klikken sluiten.
+- [ ] **+ Nieuwe taak** (rechtsboven in de kaart) opent een venster met titel, notities, subtaken, datum/tijd, prioriteit, tags en herhaling. Er is geen losse invoerbalk meer.
+- [ ] Snel typen in de titel: `Bel mama morgen 14:30 #familie !hoog` — de voorvertoning toont datum, prioriteit en tag; na Enter (of "Taak toevoegen") bestaat de taak met die waarden. Wat je zelf invult wint van de woorden in de titel. Ook Engels en `Water plants every week`.
+- [ ] Subtaken bij het aanmaken: typ een subtaak + Enter (meerdere), pas een titel aan, verwijder met ×; opslaan maakt de taak met alle subtaken. Een nog niet bevestigde subtaak-tekst wordt bij opslaan meegenomen.
+- [ ] Het venster blijft intact als er op de achtergrond iets wijzigt (typ iets en wacht een minuut / wijzig een taak elders).
+- [ ] Annuleren, Esc en buiten het venster klikken sluiten zonder op te slaan; een lege titel of ongeldige datum blokkeert opslaan.
+- [ ] Taak aantikken: notities, subtaken, geschiedenis. Subtaak toevoegen/afvinken/verwijderen; de laatste subtaak afvinken voltooit de taak (ook via het bewerkvenster).
+- [ ] ✎ bewerken (venster): subtaken toevoegen (Enter), hernoemen, afvinken, verwijderen (direct actief), snelle datumknoppen (Vandaag/Morgen/Volgende week/Geen), prioriteit, tags aan/uit en nieuwe tag, herhaling; Opslaan, Annuleren, Esc en buiten klikken sluiten.
 - [ ] ⏰ uitstellen → morgen (tijd blijft). 🗑 vraagt een tweede tik.
 - [ ] Afvinken: taak gaat naar "Voltooid" (ingeklapt, klik om te openen); "Voltooide wissen" werkt.
 - [ ] Sorteer-knop rechtsboven (⇅): handmatige volgorde, slepen werkt en blijft na verversen.

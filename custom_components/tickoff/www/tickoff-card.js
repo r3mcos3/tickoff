@@ -14,7 +14,7 @@
 
   const I18N = {
     en: {
-      add_placeholder: "Add a task...  try: Call mom tomorrow 14:30 #family !high",
+      add_placeholder: "Task title...   try: Call mom tomorrow 14:30 #family !high",
       add: "Add", options: "Options", notes: "Notes", due_date: "Due date", due_time: "Time", priority: "Priority",
       tags: "Tags", new_tag: "New tag", repeat: "Repeat", none: "None", low: "Low", medium: "Medium", high: "High",
       daily: "Daily", weekly: "Weekly", monthly: "Monthly", yearly: "Yearly", after_completion: "N days after completing",
@@ -27,14 +27,15 @@
       empty_done: "No completed tasks.", loading: "Loading...", set_up: "Tickoff is not set up yet. Add it under Settings > Devices & services.",
       next_week: "Next week", edit_tags: "Edit tags", wd: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
       parsed: "Detected", editor_title: "Title", editor_view: "View", editor_tags: "Only these tags (empty = all)",
-      editor_show_done: "Show completed tasks", editor_show_add: "Show add field", editor_read_only: "Read only",
+      editor_show_done: "Show completed tasks", editor_show_add: "Show the new task button", editor_read_only: "Read only",
       editor_compact: "Compact", editor_hide_empty: "Hide when empty", editor_manual: "Manual order (drag & drop)",
       view_all: "All tasks", view_today: "Today", view_upcoming: "Upcoming", view_done: "Completed",
+      new_task: "New task", add_task: "Add task", sub_placeholder: "Add a subtask and press Enter", sub_none: "No subtasks yet",
       count_open: "open", date_ph: "dd-mm-yyyy", time_ph: "hh:mm", pick_date: "Pick a date",
       invalid_date: "Use dd-mm-yyyy", invalid_time: "Use 24-hour time hh:mm",
     },
     nl: {
-      add_placeholder: "Taak toevoegen...  probeer: Mama bellen morgen 14:30 #familie !hoog",
+      add_placeholder: "Titel van de taak...   probeer: Mama bellen morgen 14:30 #familie !hoog",
       add: "Toevoegen", options: "Opties", notes: "Notities", due_date: "Vervaldatum", due_time: "Tijd", priority: "Prioriteit",
       tags: "Tags", new_tag: "Nieuwe tag", repeat: "Herhalen", none: "Geen", low: "Laag", medium: "Midden", high: "Hoog",
       daily: "Dagelijks", weekly: "Wekelijks", monthly: "Maandelijks", yearly: "Jaarlijks", after_completion: "N dagen na afvinken",
@@ -47,9 +48,10 @@
       empty_done: "Geen voltooide taken.", loading: "Laden...", set_up: "Tickoff is nog niet ingesteld. Voeg het toe via Instellingen > Apparaten & diensten.",
       next_week: "Volgende week", edit_tags: "Tags bewerken", wd: ["ma", "di", "wo", "do", "vr", "za", "zo"],
       parsed: "Herkend", editor_title: "Titel", editor_view: "Weergave", editor_tags: "Alleen deze tags (leeg = alle)",
-      editor_show_done: "Voltooide taken tonen", editor_show_add: "Toevoegveld tonen", editor_read_only: "Alleen lezen",
+      editor_show_done: "Voltooide taken tonen", editor_show_add: "Nieuwe-taakknop tonen", editor_read_only: "Alleen lezen",
       editor_compact: "Compact", editor_hide_empty: "Verbergen als leeg", editor_manual: "Handmatige volgorde (slepen)",
       view_all: "Alle taken", view_today: "Vandaag", view_upcoming: "Binnenkort", view_done: "Voltooid",
+      new_task: "Nieuwe taak", add_task: "Taak toevoegen", sub_placeholder: "Voeg een subtaak toe en druk op Enter", sub_none: "Nog geen subtaken",
       count_open: "open", date_ph: "dd-mm-jjjj", time_ph: "uu:mm", pick_date: "Kies een datum",
       invalid_date: "Gebruik dd-mm-jjjj", invalid_time: "Gebruik 24-uurs tijd uu:mm",
     },
@@ -284,9 +286,11 @@
     .addbar:focus-within { outline: 2px solid var(--primary-color); }
     .addbar > ha-icon { color: var(--tk-muted); }
     .addbar input { flex: 1; border: none; background: transparent; padding: 10px 4px; outline: none !important; }
-    .addbtn { background: var(--primary-color); color: var(--text-primary-color, #fff); padding: 6px 14px; font-weight: 600; border-radius: 10px; margin: 4px 0; }
+    .addbtn { background: var(--primary-color); color: var(--text-primary-color, #fff); padding: 7px 14px; font-weight: 600; border-radius: 10px; display: inline-flex; align-items: center; gap: 4px; }
+    .addbtn:hover { filter: brightness(1.08); }
+    .subrow .subtitle { flex: 1; padding: 5px 8px; font-size: .95rem; }
     .addbtn:disabled { opacity: .4; cursor: default; }
-    .preview { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 4px 0; font-size: .82em; color: var(--tk-muted); align-items: center; }
+    .preview { display: flex; flex-wrap: wrap; gap: 6px; font-size: .82em; color: var(--tk-muted); align-items: center; min-height: 0; }
     .extra { display: none; gap: 8px; flex-wrap: wrap; padding: 10px 2px 2px; }
     .extra.open { display: flex; }
     .extra textarea { flex-basis: 100%; resize: vertical; }
@@ -430,14 +434,12 @@
       this.shadowRoot.innerHTML = `<style>${CSS}</style>
         <ha-card class="${cfg.compact ? "compact" : ""}">
           <div class="head"><h2></h2><span id="pills"></span><span id="headbtns"></span></div>
-          <div class="adder" id="adder"></div>
           <div class="chips" id="chips"></div>
           <div id="list"></div>
           <div class="foot" id="foot"></div>
           <div id="overlay"></div>
         </ha-card>`;
       this._root = this.shadowRoot;
-      this._buildAdder();
       const $ = (id) => this._root.getElementById(id);
       const list = $("list");
       list.addEventListener("click", (e) => this._onClick(e));
@@ -454,80 +456,77 @@
       this._root.addEventListener("input", (e) => this._onMask(e));
       this._root.addEventListener("click", (e) => this._onPick(e));
       this._root.addEventListener("change", (e) => this._onPicked(e));
-      $("overlay").addEventListener("keydown", (e) => { if (e.key === "Escape") { this._editing = null; this._update(); } });
+      $("overlay").addEventListener("keydown", (e) => this._onSheetKey(e));
+      $("overlay").addEventListener("change", (e) => this._onSheetChange(e));
+      this._root.addEventListener("input", (e) => this._onSheetInput(e));
     }
 
-    _buildAdder() {
+    // ----- the task modal (create and edit) -----
+    _blankTask() {
+      return { id: null, title: "", notes: "", due_date: null, due_time: null, priority: 0, tags: [], recurrence: null, subtasks: [] };
+    }
+
+    _openNew() {
+      if (!this._snap || !this._snap.entity_id) return;
+      this._creating = true;
+      this._editing = null;
+      this._draftSubs = [];
+      this._syncSheet();
+      const title = this._root.querySelector('.sheet [data-f="title"]');
+      if (title) title.focus();
+    }
+
+    _closeSheet() {
+      this._editing = null;
+      this._creating = false;
+      this._confirm = null;
+      this._draftSubs = [];
+      this._subSig = null;
+      this._root.getElementById("overlay").innerHTML = "";
+    }
+
+    /** Keeps the modal in step with state without ever rebuilding it while someone is typing in it. */
+    _syncSheet() {
+      const host = this._root.getElementById("overlay");
+      const snap = this._snap;
+      if (!snap || (!this._creating && !this._editing)) { if (host.firstChild) host.innerHTML = ""; return; }
+      if (this._creating) {
+        if (!host.firstChild) host.innerHTML = this._sheet("new", this._blankTask());
+        return;
+      }
+      const task = snap.tasks.find((x) => x.id === this._editing);
+      if (!task) { this._closeSheet(); return; }
+      if (!host.firstChild) { host.innerHTML = this._sheet("edit", task); this._subSig = JSON.stringify(task.subtasks); return; }
+      const sig = JSON.stringify(task.subtasks);
+      const focused = this._root.activeElement;
+      if (sig !== this._subSig && !(focused && focused.dataset && focused.dataset.f === "subtitle")) {
+        this._subSig = sig;
+        const box = host.querySelector("#sheetsubs");
+        if (box) box.innerHTML = this._subsHtml(task.subtasks, "edit");
+      }
+    }
+
+    _subsHtml(subs, mode) {
       const t = this._t;
-      const box = this._root.getElementById("adder");
-      const hidden = !this._config.show_add || this._config.read_only || this._config.view === "done";
-      box.style.display = hidden ? "none" : "";
-      box.innerHTML = `<div class="addbar"><ha-icon icon="mdi:plus"></ha-icon>
-          <input type="text" id="addtitle" autocomplete="off" placeholder="${esc(t.add_placeholder)}">
-          <button class="iconbtn" id="addmore" title="${esc(t.options)}"><ha-icon icon="mdi:tune-variant"></ha-icon></button>
-          <button class="addbtn" id="addbtn" disabled>${esc(t.add)}</button></div>
-        <div class="preview" id="preview"></div>
-        <div class="extra" id="addextra">
-          <textarea id="addnotes" rows="2" placeholder="${esc(t.notes)}"></textarea>
-          ${dateField('id="adddate"', "", t)}${timeField('id="addtime"', "", t)}
-          <select id="addprio">${PRIO_NAMES.map((n, i) => `<option value="${i}">${esc(t.priority)}: ${esc(t[n])}</option>`).join("")}</select>
-          <select id="addrec">${REC_TYPES.map((v) => `<option value="${v}">${esc(v ? t[v] : t.repeat + ": " + t.none)}</option>`).join("")}</select>
-        </div>`;
-      const $ = (id) => box.querySelector("#" + id);
-      $("addbtn").addEventListener("click", () => this._submitAdd());
-      $("addtitle").addEventListener("keydown", (e) => { if (e.key === "Enter") this._submitAdd(); });
-      $("addtitle").addEventListener("input", () => this._updatePreview());
-      $("addmore").addEventListener("click", () => { $("addextra").classList.toggle("open"); $("addmore").classList.toggle("on"); });
+      if (!subs.length) return `<div class="muted" style="font-size:.9rem">${esc(t.sub_none)}</div>`;
+      return subs.map((s, i) => `<div class="subrow ${s.done ? "done" : ""}" data-sub="${esc(mode === "edit" ? s.id : i)}">
+          ${mode === "edit"
+            ? `<button type="button" class="check" data-act="sheetsubtoggle" style="${s.done ? "background:var(--tk-muted);color:#fff" : ""}"><ha-icon icon="mdi:check"></ha-icon></button>`
+            : '<span style="width:18px;text-align:center;color:var(--tk-muted)">•</span>'}
+          <input type="text" class="subtitle" data-f="subtitle" value="${esc(s.title)}">
+          <button type="button" class="iconbtn" data-act="sheetsubremove" style="width:28px;height:28px" title="${esc(t.delete)}"><ha-icon icon="mdi:close"></ha-icon></button></div>`).join("");
     }
 
-    _updatePreview() {
-      const $ = (id) => this._root.getElementById(id);
-      const text = $("addtitle").value;
-      $("addbtn").disabled = !text.trim();
+    _previewHtml(text) {
+      const t = this._t;
+      if (!text.trim()) return "";
       const p = parseQuickAdd(text, this._today);
       const bits = [];
-      const t = this._t;
-      if (text.trim()) {
-        if (p.due_date) bits.push(`<span class="chip filter"><ha-icon icon="mdi:calendar"></ha-icon>${esc(relativeDay(p.due_date, this._today, t, this._lang))}${p.due_time ? " " + esc(p.due_time) : ""}</span>`);
-        if (p.priority) bits.push(`<span class="chip filter"><ha-icon icon="mdi:flag" style="color:${PRIO_COLORS[p.priority]}"></ha-icon>${esc(t[PRIO_NAMES[p.priority]])}</span>`);
-        if (p.recurrence) bits.push(`<span class="chip filter"><ha-icon icon="mdi:repeat"></ha-icon>${esc(describeRecurrence(p.recurrence, t))}</span>`);
-        for (const tag of p.tags) bits.push(`<span class="chip filter"><ha-icon icon="mdi:tag"></ha-icon>${esc(tag)}</span>`);
-      }
-      $("preview").innerHTML = bits.length ? `<span>${esc(t.parsed)}:</span>${bits.join("")}` : "";
-    }
-
-    _submitAdd() {
-      const $ = (id) => this._root.getElementById(id);
-      const text = $("addtitle").value.trim();
-      if (!text || !this._snap) return;
-      const p = parseQuickAdd(text, this._today);
-      const data = { title: p.title };
-      const typedDate = parseDateText($("adddate").value);
-      const typedTime = parseTimeText($("addtime").value);
-      if (typedDate === null || typedTime === null) {
-        $("adddate").classList.toggle("bad", typedDate === null);
-        $("addtime").classList.toggle("bad", typedTime === null);
-        return; // keep what was typed, show which field is wrong
-      }
-      $("adddate").classList.remove("bad"); $("addtime").classList.remove("bad");
-      const date = typedDate || p.due_date;
-      const time = typedTime || p.due_time;
-      if ($("addnotes").value.trim()) data.notes = $("addnotes").value.trim();
-      if (date) data.due_date = date;
-      if (date && time) data.due_time = time + ":00";
-      const prio = +$("addprio").value || p.priority;
-      if (prio) data.priority = prio;
-      if (p.tags.length) data.tags = p.tags;
-      const rec = $("addrec").value;
-      if (rec) {
-        const weekday = date ? (parseDate(date).getDay() + 6) % 7 : null;
-        data.recurrence = recurrenceFromForm({ type: rec, interval: 1, days: 1, weekdays: weekday === null ? [] : [weekday] });
-      } else if (p.recurrence) data.recurrence = p.recurrence;
-      this._call("add_task", data);
-      for (const id of ["addtitle", "addnotes", "adddate", "addtime"]) $(id).value = "";
-      $("addprio").value = "0";
-      $("addrec").value = "";
-      this._updatePreview();
+      if (p.due_date) bits.push(`<span class="chip filter"><ha-icon icon="mdi:calendar"></ha-icon>${esc(relativeDay(p.due_date, this._today, t, this._lang))}${p.due_time ? " " + esc(p.due_time) : ""}</span>`);
+      if (p.priority) bits.push(`<span class="chip filter"><ha-icon icon="mdi:flag" style="color:${PRIO_COLORS[p.priority]}"></ha-icon>${esc(t[PRIO_NAMES[p.priority]])}</span>`);
+      if (p.recurrence) bits.push(`<span class="chip filter"><ha-icon icon="mdi:repeat"></ha-icon>${esc(describeRecurrence(p.recurrence, t))}</span>`);
+      for (const tag of p.tags) bits.push(`<span class="chip filter"><ha-icon icon="mdi:tag"></ha-icon>${esc(tag)}</span>`);
+      return bits.length ? `<span>${esc(t.parsed)}:</span>${bits.join("")}` : "";
     }
 
     // ----- rendering -----
@@ -542,8 +541,6 @@
       const view = this._view();
 
       root.querySelector("h2").textContent = cfg.title ?? t[{ all: "all", today: "today", upcoming: "upcoming", done: "done" }[view]] ?? "Tickoff";
-      const adder = root.getElementById("addtitle");
-      if (adder) adder.placeholder = t.add_placeholder;
 
       // header pills and buttons
       const open = snap ? snap.tasks.filter((x) => x.status === "open") : [];
@@ -553,8 +550,10 @@
         ? (overdue ? `<span class="pill bad">${overdue} ${esc(t.overdue.toLowerCase())}</span> ` : "") +
           (today ? `<span class="pill warn">${today} ${esc(t.today.toLowerCase())}</span> ` : "") +
           `<span class="pill">${open.length} ${esc(t.count_open)}</span>` : "";
-      root.getElementById("headbtns").innerHTML = !cfg.read_only && view === "all"
-        ? `<button class="iconbtn ${cfg.manual ? "on" : ""}" data-act="manual" title="${esc(t.manual_order)}"><ha-icon icon="mdi:sort"></ha-icon></button>` : "";
+      const canAdd = !cfg.read_only && cfg.show_add !== false && view !== "done";
+      root.getElementById("headbtns").innerHTML =
+        (!cfg.read_only && view === "all" ? `<button class="iconbtn ${cfg.manual ? "on" : ""}" data-act="manual" title="${esc(t.manual_order)}"><ha-icon icon="mdi:sort"></ha-icon></button>` : "") +
+        (canAdd ? `<button class="addbtn" data-act="new"><ha-icon icon="mdi:plus"></ha-icon> ${esc(t.new_task)}</button>` : "");
 
       // tag filter chips
       const tags = usedTags(snap);
@@ -583,7 +582,7 @@
       const doneCount = snap ? snap.tasks.filter((x) => x.status === "done").length : 0;
       root.getElementById("foot").innerHTML = doneCount && !cfg.read_only && (view === "done" || view === "all")
         ? `<button data-act="clear">${esc(t.clear_completed)} (${doneCount})</button>` : "";
-      root.getElementById("overlay").innerHTML = this._editing && snap ? this._sheet(snap.tasks.find((x) => x.id === this._editing)) : "";
+      this._syncSheet();
       const hide = cfg.hide_when_empty && snap && !buildSections(snap, cfg, this._tagFilter).length;
       this.style.display = hide ? "none" : "";
     }
@@ -653,37 +652,42 @@
       return html;
     }
 
-    _sheet(task) {
-      if (!task) return "";
+    _sheet(mode, task) {
       const t = this._t;
       const snap = this._snap;
       const rule = task.recurrence || {};
       const wd = rule.weekdays || [];
       const allTags = Object.keys(snap.tags).sort((a, b) => a.localeCompare(b));
       const today = this._today;
-      return `<div class="overlay" data-act="backdrop"><div class="sheet" role="dialog" data-task="${esc(task.id)}">
-        <h3>${esc(t.edit_task)}</h3>
-        <label class="f">${esc(t.editor_title)}<input type="text" data-f="title" value="${esc(task.title)}"></label>
-        <label class="f">${esc(t.notes)}<textarea data-f="notes" rows="3">${esc(task.notes)}</textarea></label>
-        <div class="f" style="display:flex;flex-direction:column;gap:6px"><span style="font-size:.78em;font-weight:600;color:var(--tk-muted);text-transform:uppercase;letter-spacing:.4px">${esc(t.due_date)}</span>
+      const label = (text) => `<span style="font-size:.78em;font-weight:600;color:var(--tk-muted);text-transform:uppercase;letter-spacing:.4px">${esc(text)}</span>`;
+      const isNew = mode === "new";
+      return `<div class="overlay" data-act="backdrop"><div class="sheet" role="dialog" data-mode="${mode}" data-task="${esc(task.id || "")}">
+        <h3>${esc(isNew ? t.new_task : t.edit_task)}</h3>
+        <label class="f">${esc(t.editor_title)}<input type="text" data-f="title" autocomplete="off" value="${esc(task.title)}" placeholder="${esc(isNew ? t.add_placeholder : "")}"></label>
+        ${isNew ? '<div class="preview" id="sheetpreview"></div>' : ""}
+        <label class="f">${esc(t.notes)}<textarea data-f="notes" rows="2">${esc(task.notes)}</textarea></label>
+        <div class="f" style="display:flex;flex-direction:column;gap:6px">${label(t.subtasks)}
+          <div id="sheetsubs">${this._subsHtml(isNew ? (this._draftSubs || []).map((x) => ({ title: x, done: false })) : task.subtasks, mode)}</div>
+          <input type="text" data-f="newsub" autocomplete="off" placeholder="${esc(t.sub_placeholder)}"></div>
+        <div class="f" style="display:flex;flex-direction:column;gap:6px">${label(t.due_date)}
           <div class="quick">
-            <button class="chip filter" data-act="qdate" data-d="${today}">${esc(t.today)}</button>
-            <button class="chip filter" data-act="qdate" data-d="${addDays(today, 1)}">${esc(t.tomorrow)}</button>
-            <button class="chip filter" data-act="qdate" data-d="${addDays(today, 7)}">${esc(t.next_week)}</button>
-            <button class="chip filter" data-act="qdate" data-d="">${esc(t.none)}</button></div>
+            <button type="button" class="chip filter" data-act="qdate" data-d="${today}">${esc(t.today)}</button>
+            <button type="button" class="chip filter" data-act="qdate" data-d="${addDays(today, 1)}">${esc(t.tomorrow)}</button>
+            <button type="button" class="chip filter" data-act="qdate" data-d="${addDays(today, 7)}">${esc(t.next_week)}</button>
+            <button type="button" class="chip filter" data-act="qdate" data-d="">${esc(t.none)}</button></div>
           <div class="row2">${dateField('data-f="due_date"', task.due_date, t)}${timeField('data-f="due_time"', task.due_time, t)}</div></div>
-        <div class="f" style="display:flex;flex-direction:column;gap:6px"><span style="font-size:.78em;font-weight:600;color:var(--tk-muted);text-transform:uppercase;letter-spacing:.4px">${esc(t.priority)}</span>
-          <div class="seg" data-f="priority" data-v="${task.priority}">${PRIO_NAMES.map((n, i) => `<button data-act="prio" data-v="${i}" class="${task.priority === i ? "on" : ""}">${esc(t[n])}</button>`).join("")}</div></div>
-        <div class="f" style="display:flex;flex-direction:column;gap:6px"><span style="font-size:.78em;font-weight:600;color:var(--tk-muted);text-transform:uppercase;letter-spacing:.4px">${esc(t.tags)}</span>
-          <div class="chips" style="padding:0" data-f="tags" data-v="${esc(JSON.stringify(task.tags))}">
+        <div class="f" style="display:flex;flex-direction:column;gap:6px">${label(t.priority)}
+          <div class="seg" data-f="priority" data-v="${task.priority}">${PRIO_NAMES.map((n, i) => `<button type="button" data-act="prio" data-v="${i}" class="${task.priority === i ? "on" : ""}">${esc(t[n])}</button>`).join("")}</div></div>
+        <div class="f" style="display:flex;flex-direction:column;gap:6px">${label(t.tags)}
+          <div class="chips" style="padding:0" data-f="tags">
             ${allTags.map((n) => `<span class="chip filter ${task.tags.includes(n) ? "on" : ""}" data-act="sheettag" data-tag="${esc(n)}"><span class="dot" style="background:${esc(snap.tags[n].color)}"></span>${esc(n)}</span>`).join("")}
             <span class="newtag"><input type="text" data-f="newtag" placeholder="${esc(t.new_tag)}"></span></div></div>
-        <div class="f" style="display:flex;flex-direction:column;gap:6px"><span style="font-size:.78em;font-weight:600;color:var(--tk-muted);text-transform:uppercase;letter-spacing:.4px">${esc(t.repeat)}</span>
+        <div class="f" style="display:flex;flex-direction:column;gap:6px">${label(t.repeat)}
           <div class="row2"><select data-f="rtype">${REC_TYPES.map((v) => `<option value="${v}" ${(rule.type || "") === v ? "selected" : ""}>${esc(v ? t[v] : t.none)}</option>`).join("")}</select>
           <input type="number" min="1" data-f="rint" value="${esc(rule.type === "after_completion" ? rule.days : rule.interval || 1)}"></div>
           <div class="wd">${t.wd.map((n, i) => `<label><input type="checkbox" data-f="wd" value="${i}" ${wd.includes(i) ? "checked" : ""}>${esc(n)}</label>`).join("")}</div></div>
-        <div class="sheetfoot"><button class="btn danger" data-act="sheetdelete">${this._confirm === "sheet" ? esc(t.sure) : esc(t.delete)}</button><span class="grow"></span>
-          <button class="btn" data-act="cancel">${esc(t.cancel)}</button><button class="btn primary" data-act="save">${esc(t.save)}</button></div>
+        <div class="sheetfoot">${isNew ? "" : `<button type="button" class="btn danger" data-act="sheetdelete">${this._confirm === "sheet" ? esc(t.sure) : esc(t.delete)}</button>`}<span class="grow"></span>
+          <button type="button" class="btn" data-act="cancel">${esc(t.cancel)}</button><button type="button" class="btn primary" data-act="save">${esc(isNew ? t.add_task : t.save)}</button></div>
       </div></div>`;
     }
 
@@ -704,7 +708,7 @@
       if (this._config.read_only) return;
       if (act === "toggle") this._call(task.status === "done" ? "reopen_task" : "complete_task", { task_id: task.id });
       else if (act === "snooze") this._call("snooze_task", { task_id: task.id });
-      else if (act === "edit") { this._editing = task.id; this._update(); }
+      else if (act === "edit") { this._editing = task.id; this._creating = false; this._syncSheet(); }
       else if (act === "delete") {
         if (this._confirm === task.id) { this._confirm = null; this._call("delete_task", { task_id: task.id }); }
         else {
@@ -727,48 +731,139 @@
       e.target.value = "";
     }
 
+    _sheetCtx() {
+      const sheet = this._root.querySelector(".sheet");
+      if (!sheet) return null;
+      const f = (n) => sheet.querySelector(`[data-f="${n}"]`);
+      const mode = sheet.dataset.mode;
+      const task = mode === "edit" ? this._snap.tasks.find((x) => x.id === sheet.dataset.task) : null;
+      return { sheet, f, mode, task };
+    }
+
+    _renderDraftSubs() {
+      const box = this._root.querySelector("#sheetsubs");
+      if (box) box.innerHTML = this._subsHtml((this._draftSubs || []).map((x) => ({ title: x, done: false })), "new");
+    }
+
+    _onSheetInput(e) {
+      const el = e.target;
+      if (!el.dataset || el.dataset.f !== "title") return;
+      const preview = this._root.getElementById("sheetpreview");
+      if (preview) preview.innerHTML = this._previewHtml(el.value); // quick-add words are understood while creating
+    }
+
+    _addSheetSub(ctx) {
+      const input = ctx.f("newsub");
+      const title = input.value.trim();
+      if (!title) return;
+      input.value = "";
+      if (ctx.mode === "edit") this._call("add_subtask", { task_id: ctx.task.id, title });
+      else { this._draftSubs = [...(this._draftSubs || []), title]; this._renderDraftSubs(); }
+      input.focus();
+    }
+
+    _onSheetKey(e) {
+      const ctx = this._sheetCtx();
+      if (e.key === "Escape") { this._closeSheet(); return; }
+      if (!ctx || e.key !== "Enter") return;
+      if (e.target.dataset.f === "newsub") { e.preventDefault(); this._addSheetSub(ctx); }
+      else if (e.target.dataset.f === "title") { e.preventDefault(); this._saveSheet(ctx); }
+      else if (e.target.dataset.f === "subtitle") e.target.blur();
+    }
+
+    _onSheetChange(e) {
+      const el = e.target;
+      const ctx = this._sheetCtx();
+      if (!ctx || !el.dataset || el.dataset.f !== "subtitle") return;
+      const row = el.closest("[data-sub]");
+      const title = el.value.trim();
+      if (ctx.mode === "edit") {
+        if (title) this._call("update_subtask", { task_id: ctx.task.id, subtask_id: row.dataset.sub, title });
+        else this._call("remove_subtask", { task_id: ctx.task.id, subtask_id: row.dataset.sub });
+      } else {
+        const i = +row.dataset.sub;
+        if (title) this._draftSubs[i] = title;
+        else this._draftSubs.splice(i, 1);
+        this._renderDraftSubs();
+      }
+    }
+
+    _saveSheet(ctx) {
+      const { sheet, f, mode, task } = ctx;
+      const date = parseDateText(f("due_date").value);
+      const time = parseTimeText(f("due_time").value);
+      f("due_date").classList.toggle("bad", date === null);
+      f("due_time").classList.toggle("bad", time === null);
+      if (date === null || time === null) return; // keep the modal open
+      const tags = [...sheet.querySelectorAll('[data-act="sheettag"].on')].map((c) => c.dataset.tag);
+      const extra = f("newtag").value.split(",").map((x) => x.trim()).filter(Boolean);
+      const typedRule = recurrenceFromForm({
+        type: f("rtype").value, interval: f("rint").value, days: f("rint").value,
+        weekdays: [...sheet.querySelectorAll('[data-f="wd"]:checked')].map((x) => +x.value),
+      });
+      const pendingSub = f("newsub").value.trim();
+
+      if (mode === "new") {
+        const text = f("title").value.trim();
+        if (!text) { f("title").classList.add("bad"); f("title").focus(); return; }
+        const p = parseQuickAdd(text, this._today); // "Call mom tomorrow 14:30 #family !high"
+        const d = date || p.due_date;
+        const tm = time || p.due_time;
+        const prio = +f("priority").dataset.v || p.priority;
+        const allTags = [...new Set([...tags, ...extra, ...p.tags])];
+        let rule = typedRule;
+        if (!rule && p.recurrence) rule = p.recurrence;
+        const data = { title: p.title };
+        if (f("notes").value.trim()) data.notes = f("notes").value.trim();
+        if (d) data.due_date = d;
+        if (d && tm) data.due_time = tm + ":00";
+        if (prio) data.priority = prio;
+        if (allTags.length) data.tags = allTags;
+        if (rule) data.recurrence = rule;
+        const subs = [...(this._draftSubs || []), ...(pendingSub ? [pendingSub] : [])];
+        if (subs.length) data.subtasks = subs;
+        this._call("add_task", data);
+        this._closeSheet();
+        return;
+      }
+      const data = {
+        task_id: task.id,
+        title: f("title").value.trim() || task.title,
+        notes: f("notes").value.trim() || null,
+        due_date: date || null,
+        due_time: date && time ? time + ":00" : null,
+        priority: +f("priority").dataset.v,
+        tags: [...tags, ...extra],
+        recurrence: typedRule,
+      };
+      this._call("update_task", data);
+      if (pendingSub) this._call("add_subtask", { task_id: task.id, title: pendingSub });
+      this._closeSheet();
+    }
+
     _onSheet(e) {
       const btn = e.target.closest("[data-act]");
       if (!btn) return;
       const act = btn.dataset.act;
-      const sheet = this._root.querySelector(".sheet");
-      if (act === "backdrop" && e.target === btn) { this._editing = null; this._update(); return; }
-      if (!sheet) return;
-      const f = (n) => sheet.querySelector(`[data-f="${n}"]`);
-      const task = this._snap.tasks.find((x) => x.id === sheet.dataset.task);
+      if (act === "backdrop" && e.target === btn) { this._closeSheet(); return; }
+      const ctx = this._sheetCtx();
+      if (!ctx) return;
+      const { sheet, f, task } = ctx;
       if (act === "qdate") { f("due_date").value = fmtDate(btn.dataset.d); f("due_date").classList.remove("bad"); if (!btn.dataset.d) f("due_time").value = ""; }
       else if (act === "prio") { sheet.querySelectorAll('[data-act="prio"]').forEach((b) => b.classList.toggle("on", b === btn)); f("priority").dataset.v = btn.dataset.v; }
       else if (act === "sheettag") btn.classList.toggle("on");
-      else if (act === "cancel") { this._editing = null; this._confirm = null; this._update(); }
-      else if (act === "sheetdelete") {
-        if (this._confirm === "sheet") { this._confirm = null; this._editing = null; this._call("delete_task", { task_id: task.id }); this._update(); }
+      else if (act === "cancel") this._closeSheet();
+      else if (act === "sheetsubtoggle") {
+        const sub = task.subtasks.find((x) => x.id === btn.closest("[data-sub]").dataset.sub);
+        if (sub) this._call("update_subtask", { task_id: task.id, subtask_id: sub.id, done: !sub.done });
+      } else if (act === "sheetsubremove") {
+        const row = btn.closest("[data-sub]");
+        if (ctx.mode === "edit") this._call("remove_subtask", { task_id: task.id, subtask_id: row.dataset.sub });
+        else { this._draftSubs.splice(+row.dataset.sub, 1); this._renderDraftSubs(); }
+      } else if (act === "sheetdelete") {
+        if (this._confirm === "sheet") { this._call("delete_task", { task_id: task.id }); this._closeSheet(); }
         else { this._confirm = "sheet"; btn.textContent = this._t.sure; }
-      } else if (act === "save") {
-        const date = parseDateText(f("due_date").value);
-        const time = parseTimeText(f("due_time").value);
-        f("due_date").classList.toggle("bad", date === null);
-        f("due_time").classList.toggle("bad", time === null);
-        if (date === null || time === null) return; // keep the sheet open
-
-        const tags = [...sheet.querySelectorAll('[data-act="sheettag"].on')].map((c) => c.dataset.tag);
-        const extra = f("newtag").value.split(",").map((x) => x.trim()).filter(Boolean);
-        const data = {
-          task_id: task.id,
-          title: f("title").value.trim() || task.title,
-          notes: f("notes").value.trim() || null,
-          due_date: date || null,
-          due_time: date && time ? time + ":00" : null,
-          priority: +f("priority").dataset.v,
-          tags: [...tags, ...extra],
-          recurrence: recurrenceFromForm({
-            type: f("rtype").value, interval: f("rint").value, days: f("rint").value,
-            weekdays: [...sheet.querySelectorAll('[data-f="wd"]:checked')].map((x) => +x.value),
-          }),
-        };
-        this._editing = null;
-        this._call("update_task", data);
-        this._update();
-      }
+      } else if (act === "save") this._saveSheet(ctx);
     }
 
     _onMask(e) {
@@ -797,7 +892,9 @@
 
     _onHead(e) {
       const btn = e.target.closest("[data-act]");
-      if (btn && btn.dataset.act === "manual") { this._config = { ...this._config, manual: !this._config.manual }; this._update(); }
+      if (!btn) return;
+      if (btn.dataset.act === "manual") { this._config = { ...this._config, manual: !this._config.manual }; this._update(); }
+      else if (btn.dataset.act === "new") this._openNew();
     }
 
     _onChip(e) {
