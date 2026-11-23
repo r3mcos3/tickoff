@@ -42,7 +42,7 @@ async def test_add_task_with_priority_and_tags(hass, setup_entry):
 
 
 async def test_invalid_priority_rejected(hass, setup_entry):
-    with pytest.raises(Exception, match="(?i)priority|value|range"):
+    with pytest.raises(Exception, match=r"(?i)priority|value|range"):
         await _svc(hass, "add_task", {"title": "x", "priority": 9})
 
 
