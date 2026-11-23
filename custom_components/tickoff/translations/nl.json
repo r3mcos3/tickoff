@@ -25,11 +25,14 @@
       "init": {
         "title": "Lijstopties",
         "data": {
-          "notify_service": "Notify-service"
+          "notify_service": "Notify-service",
+          "notify_time": "Meldtijd"
         },
         "data_description": {
-          "notify_service": "Optioneel. Service voor meldingen op de vervaldag van deze lijst, bv. mobile_app_mijn_telefoon."
-        }
+          "notify_service": "Optioneel. Service voor meldingen op de vervaldag van deze lijst, bv. mobile_app_mijn_telefoon.",
+          "notify_time": "Tijd voor meldingen van taken zonder tijd (standaard 08:00). Taken met een tijd melden op die tijd."
+        },
+        "description": "Per lijst: de notify-service voor deze lijst. Op de Tickoff-overzichtsentry: de standaardservice voor alle lijsten en de meldtijd."
       }
     }
   },
@@ -61,6 +64,14 @@
         "tags": {
           "name": "Tags",
           "description": "Onbekende tags worden aangemaakt in het globale tagregister."
+        },
+        "recurrence": {
+          "name": "Herhaling",
+          "description": "type daily/weekly/monthly/yearly/after_completion, plus interval, weekdays (0=maandag) of days. null wist de herhaling."
+        },
+        "subtasks": {
+          "name": "Subtaken",
+          "description": "Titels van subtaken die met de taak worden aangemaakt."
         }
       }
     },
@@ -95,6 +106,10 @@
         "tags": {
           "name": "Tags",
           "description": "Onbekende tags worden aangemaakt in het globale tagregister."
+        },
+        "recurrence": {
+          "name": "Herhaling",
+          "description": "type daily/weekly/monthly/yearly/after_completion, plus interval, weekdays (0=maandag) of days. null wist de herhaling."
         }
       }
     },
@@ -184,6 +199,85 @@
       "name": "Tags ophalen",
       "description": "Geef alle tags met hun kleur terug.",
       "fields": {}
+    },
+    "snooze_task": {
+      "name": "Taak uitstellen",
+      "description": "Zet de vervaldatum op morgen (de tijd blijft).",
+      "fields": {
+        "task_id": {
+          "name": "Taak-ID",
+          "description": ""
+        }
+      }
+    },
+    "move_task": {
+      "name": "Taak verplaatsen",
+      "description": "Zet een taak na een andere taak (handmatige volgorde); zonder vorige taak komt hij bovenaan.",
+      "fields": {
+        "task_id": {
+          "name": "Taak-ID",
+          "description": ""
+        },
+        "previous_task_id": {
+          "name": "Vorige taak-ID",
+          "description": ""
+        }
+      }
+    },
+    "delete_completed": {
+      "name": "Voltooide taken verwijderen",
+      "description": "Verwijder alle afgevinkte taken uit de lijst.",
+      "fields": {}
+    },
+    "add_subtask": {
+      "name": "Subtaak toevoegen",
+      "description": "Voeg een subtaak toe aan een taak.",
+      "fields": {
+        "task_id": {
+          "name": "Taak-ID",
+          "description": ""
+        },
+        "title": {
+          "name": "Titel",
+          "description": ""
+        }
+      }
+    },
+    "update_subtask": {
+      "name": "Subtaak wijzigen",
+      "description": "Hernoem of vink een subtaak af. De laatste afvinken voltooit de taak.",
+      "fields": {
+        "task_id": {
+          "name": "Taak-ID",
+          "description": ""
+        },
+        "subtask_id": {
+          "name": "Subtaak-ID",
+          "description": ""
+        },
+        "title": {
+          "name": "Titel",
+          "description": ""
+        },
+        "done": {
+          "name": "Klaar",
+          "description": ""
+        }
+      }
+    },
+    "remove_subtask": {
+      "name": "Subtaak verwijderen",
+      "description": "Verwijder een subtaak.",
+      "fields": {
+        "task_id": {
+          "name": "Taak-ID",
+          "description": ""
+        },
+        "subtask_id": {
+          "name": "Subtaak-ID",
+          "description": ""
+        }
+      }
     }
   }
 }

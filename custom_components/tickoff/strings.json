@@ -25,11 +25,14 @@
       "init": {
         "title": "List options",
         "data": {
-          "notify_service": "Notify service"
+          "notify_service": "Notify service",
+          "notify_time": "Notification time"
         },
         "data_description": {
-          "notify_service": "Optional. Service used for due-date notifications of this list, e.g. mobile_app_my_phone."
-        }
+          "notify_service": "Optional. Service used for due-date notifications of this list, e.g. mobile_app_my_phone.",
+          "notify_time": "Time for due-date notifications of tasks without a time (default 08:00). Tasks with a time notify at that time."
+        },
+        "description": "Per list: the notify service for this list. On the Tickoff overview entry: the default service for all lists and the notification time."
       }
     }
   },
@@ -61,6 +64,14 @@
         "tags": {
           "name": "Tags",
           "description": "Unknown tags are created in the global tag register."
+        },
+        "recurrence": {
+          "name": "Recurrence",
+          "description": "type daily/weekly/monthly/yearly/after_completion, plus interval, weekdays (0=Monday) or days. null clears it."
+        },
+        "subtasks": {
+          "name": "Subtasks",
+          "description": "Titles of subtasks to create with the task."
         }
       }
     },
@@ -95,6 +106,10 @@
         "tags": {
           "name": "Tags",
           "description": "Unknown tags are created in the global tag register."
+        },
+        "recurrence": {
+          "name": "Recurrence",
+          "description": "type daily/weekly/monthly/yearly/after_completion, plus interval, weekdays (0=Monday) or days. null clears it."
         }
       }
     },
@@ -184,6 +199,85 @@
       "name": "Get tags",
       "description": "Return all tags with their colours.",
       "fields": {}
+    },
+    "snooze_task": {
+      "name": "Snooze task",
+      "description": "Move the due date to tomorrow (the time is kept).",
+      "fields": {
+        "task_id": {
+          "name": "Task ID",
+          "description": ""
+        }
+      }
+    },
+    "move_task": {
+      "name": "Move task",
+      "description": "Place a task after another one (manual order); without previous task it goes first.",
+      "fields": {
+        "task_id": {
+          "name": "Task ID",
+          "description": ""
+        },
+        "previous_task_id": {
+          "name": "Previous task ID",
+          "description": ""
+        }
+      }
+    },
+    "delete_completed": {
+      "name": "Delete completed tasks",
+      "description": "Remove all done tasks from the list.",
+      "fields": {}
+    },
+    "add_subtask": {
+      "name": "Add subtask",
+      "description": "Add a subtask to a task.",
+      "fields": {
+        "task_id": {
+          "name": "Task ID",
+          "description": ""
+        },
+        "title": {
+          "name": "Title",
+          "description": ""
+        }
+      }
+    },
+    "update_subtask": {
+      "name": "Update subtask",
+      "description": "Rename or tick a subtask. Ticking the last one completes the task.",
+      "fields": {
+        "task_id": {
+          "name": "Task ID",
+          "description": ""
+        },
+        "subtask_id": {
+          "name": "Subtask ID",
+          "description": ""
+        },
+        "title": {
+          "name": "Title",
+          "description": ""
+        },
+        "done": {
+          "name": "Done",
+          "description": ""
+        }
+      }
+    },
+    "remove_subtask": {
+      "name": "Remove subtask",
+      "description": "Remove a subtask.",
+      "fields": {
+        "task_id": {
+          "name": "Task ID",
+          "description": ""
+        },
+        "subtask_id": {
+          "name": "Subtask ID",
+          "description": ""
+        }
+      }
     }
   }
 }

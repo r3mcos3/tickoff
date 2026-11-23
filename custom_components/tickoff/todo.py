@@ -144,14 +144,15 @@ class TasksTodoListEntity(TodoListEntity):
             raise ServiceValidationError(f"Unknown task {task_id!r}")
 
     async def async_add_task(self, **data: Any) -> ServiceResponse:
-        due_date = data.get("due_date")
         task = self._store.add(
             data["title"],
             notes=data.get("notes"),
-            due_date=due_date,
+            due_date=data.get("due_date"),
             due_time=data.get("due_time"),
             priority=data.get("priority", 0),
             tags=data.get("tags"),
+            recurrence=data.get("recurrence"),
+            subtasks=data.get("subtasks"),
         )
         return {"task": task_to_response(task)}
 
@@ -171,6 +172,37 @@ class TasksTodoListEntity(TodoListEntity):
     async def async_delete_task(self, task_id: str) -> None:
         self._require(task_id)
         self._store.delete([task_id])
+
+    async def async_snooze_task(self, task_id: str) -> None:
+        self._require(task_id)
+        self._store.snooze(task_id)
+
+    async def async_move_task(self, task_id: str, previous_task_id: str | None = None) -> None:
+        self._require(task_id)
+        if previous_task_id is not None:
+            self._require(previous_task_id)
+        self._store.move(task_id, previous_task_id)
+
+    async def async_delete_completed(self) -> ServiceResponse:
+        return {"deleted": self._store.delete_completed()}
+
+    async def async_add_subtask(self, task_id: str, title: str) -> ServiceResponse:
+        self._require(task_id)
+        return {"subtask": dict(self._store.add_subtask(task_id, title))}
+
+    async def async_update_subtask(self, task_id: str, subtask_id: str, **data: Any) -> None:
+        self._require(task_id)
+        try:
+            self._store.update_subtask(task_id, subtask_id, **data)
+        except StopIteration as err:
+            raise ServiceValidationError(f"Unknown subtask {subtask_id!r}") from err
+
+    async def async_remove_subtask(self, task_id: str, subtask_id: str) -> None:
+        self._require(task_id)
+        try:
+            self._store.remove_subtask(task_id, subtask_id)
+        except KeyError as err:
+            raise ServiceValidationError(f"Unknown subtask {subtask_id!r}") from err
 
     async def async_get_tasks(
         self, status: str | None = None, tag: str | None = None
