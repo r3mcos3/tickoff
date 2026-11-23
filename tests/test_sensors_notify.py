@@ -68,7 +68,7 @@ async def test_counts_open_today_overdue(hass, setup_entry, freezer):
     assert titles == ["late", "today, time passed"]
     # the clock moves a task from today to overdue without any edit
     freezer.move_to("2026-03-10 19:00:00")
-    async_fire_time_changed(hass, dt_util.utcnow())  # the minute tick (second == 0)
+    async_fire_time_changed(hass, dt_util.utcnow(), fire_all=True)  # minute tick
     await hass.async_block_till_done()
     assert hass.states.get("sensor.tickoff_groceries_overdue").state == "3"
     assert hass.states.get("sensor.tickoff_groceries_today").state == "1"
@@ -236,7 +236,7 @@ async def test_periodic_timer_runs_the_check(hass, setup_entry, freezer):
     events = async_capture_events(hass, "tickoff_task_due")
     await add(hass, title="x", due_date="2026-03-10")
     freezer.move_to("2026-03-10 08:00:30")
-    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=1, seconds=1))
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=1, seconds=1), fire_all=True)
     await hass.async_block_till_done()
     assert len(events) == 1
 

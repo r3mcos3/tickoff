@@ -61,9 +61,11 @@ class TickoffCountSensor(SensorEntity):
     async def async_added_to_hass(self) -> None:
         self.async_on_remove(self._hub.async_add_listener(self._refresh))
         # "today" / "overdue" change with the clock, not only with edits
-        self.async_on_remove(
-            async_track_time_change(self.hass, lambda _now: self._refresh(), second=0)
-        )
+        self.async_on_remove(async_track_time_change(self.hass, self._on_minute, second=0))
+        self._refresh()
+
+    @callback
+    def _on_minute(self, _now: Any) -> None:
         self._refresh()
 
     @callback

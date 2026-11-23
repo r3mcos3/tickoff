@@ -63,10 +63,14 @@ async def ws_subscribe(hass: HomeAssistant, connection: Any, msg: dict[str, Any]
             websocket_api.event_message(msg["id"], build_snapshot(hub, registry.all()))
         )
 
+    @callback
+    def on_minute(_now: Any) -> None:
+        push()
+
     unsubs = [
         hub.async_add_listener(push),
         registry.async_add_listener(push),
-        async_track_time_change(hass, lambda _now: push(), second=0),
+        async_track_time_change(hass, on_minute, second=0),
     ]
 
     @callback
