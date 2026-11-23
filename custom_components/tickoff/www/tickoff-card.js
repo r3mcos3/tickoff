@@ -1,51 +1,55 @@
 /*
- * Tickoff card - the dashboard card of the Tickoff integration.
- * Plain JavaScript, no build step and no dependencies. Served by the integration itself.
+ * Tickoff card - tasks for Home Assistant.
+ * Plain JavaScript, no build step, no dependencies. Served by the integration itself.
  *
  *   type: custom:tickoff-card
- *   entities: [todo.tickoff_groceries]   # omit to show every Tickoff list
- *   view: list                           # list | today
+ *   view: all            # all | today | upcoming | done
+ *   tags: [garden]       # optional: only tasks with one of these tags
  */
 (() => {
   "use strict";
 
-  const VERSION = "0.1.0";
+  const VERSION = "0.3.0";
   if (customElements.get("tickoff-card")) return;
 
   const I18N = {
     en: {
-      add_placeholder: "Add a task", add: "Add", more: "More options", notes: "Notes", due_date: "Due date",
-      due_time: "Time", priority: "Priority", tags: "Tags (comma separated)", repeat: "Repeat",
-      none: "None", low: "Low", medium: "Medium", high: "High",
-      daily: "Daily", weekly: "Weekly", monthly: "Monthly", yearly: "Yearly",
-      after_completion: "N days after completing", every: "Every", days: "days", save: "Save", cancel: "Cancel",
-      snooze: "Snooze to tomorrow", edit: "Edit", delete: "Delete", sure: "Sure?", clear_completed: "Clear completed",
-      today_title: "Today", overdue: "Overdue", nothing: "Nothing to do",
-      add_subtask: "Add a subtask", edit_tags: "Edit tags",
-      done_tasks: "Completed", loading: "Loading...",
-      no_lists: "No Tickoff lists found. Add one under Settings > Devices & services.",
-      wd: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], history: "History",
-      editor_title: "Title", editor_view: "View", editor_entities: "Lists (empty = all)",
-      editor_show_completed: "Show completed tasks", editor_show_add: "Show add form",
-      editor_read_only: "Read only", editor_compact: "Compact", editor_hide_empty: "Hide when empty",
-      view_list: "List", view_today: "Today overview",
+      add_placeholder: "Add a task...  try: Call mom tomorrow 14:30 #family !high",
+      add: "Add", options: "Options", notes: "Notes", due_date: "Due date", due_time: "Time", priority: "Priority",
+      tags: "Tags", new_tag: "New tag", repeat: "Repeat", none: "None", low: "Low", medium: "Medium", high: "High",
+      daily: "Daily", weekly: "Weekly", monthly: "Monthly", yearly: "Yearly", after_completion: "N days after completing",
+      every: "Every", days: "days", save: "Save", cancel: "Cancel", delete: "Delete", sure: "Sure?",
+      snooze: "Snooze to tomorrow", edit: "Edit", clear_completed: "Clear completed", subtasks: "Subtasks",
+      add_subtask: "Add a subtask", history: "History", edit_task: "Edit task", manual_order: "Manual order",
+      overdue: "Overdue", today: "Today", tomorrow: "Tomorrow", yesterday: "Yesterday", upcoming: "Upcoming",
+      no_date: "No date", done: "Completed", all: "All tasks", days_ago: "days ago", in_days: "in {n} days",
+      empty_all: "Nothing to do. Enjoy the quiet.", empty_today: "Nothing due today.", empty_upcoming: "Nothing coming up.",
+      empty_done: "No completed tasks.", loading: "Loading...", set_up: "Tickoff is not set up yet. Add it under Settings > Devices & services.",
+      next_week: "Next week", edit_tags: "Edit tags", wd: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+      parsed: "Detected", editor_title: "Title", editor_view: "View", editor_tags: "Only these tags (empty = all)",
+      editor_show_done: "Show completed tasks", editor_show_add: "Show add field", editor_read_only: "Read only",
+      editor_compact: "Compact", editor_hide_empty: "Hide when empty", editor_manual: "Manual order (drag & drop)",
+      view_all: "All tasks", view_today: "Today", view_upcoming: "Upcoming", view_done: "Completed",
+      count_open: "open",
     },
     nl: {
-      add_placeholder: "Taak toevoegen", add: "Toevoegen", more: "Meer opties", notes: "Notities", due_date: "Vervaldatum",
-      due_time: "Tijd", priority: "Prioriteit", tags: "Tags (kommagescheiden)", repeat: "Herhalen",
-      none: "Geen", low: "Laag", medium: "Midden", high: "Hoog",
-      daily: "Dagelijks", weekly: "Wekelijks", monthly: "Maandelijks", yearly: "Jaarlijks",
-      after_completion: "N dagen na afvinken", every: "Elke", days: "dagen", save: "Opslaan", cancel: "Annuleren",
-      snooze: "Uitstellen tot morgen", edit: "Bewerken", delete: "Verwijderen", sure: "Zeker?", clear_completed: "Voltooide wissen",
-      today_title: "Vandaag", overdue: "Achterstallig", nothing: "Niets te doen",
-      add_subtask: "Subtaak toevoegen", edit_tags: "Tags bewerken",
-      done_tasks: "Voltooid", loading: "Laden...",
-      no_lists: "Geen Tickoff-lijsten gevonden. Voeg er een toe via Instellingen > Apparaten & diensten.",
-      wd: ["ma", "di", "wo", "do", "vr", "za", "zo"], history: "Geschiedenis",
-      editor_title: "Titel", editor_view: "Weergave", editor_entities: "Lijsten (leeg = alle)",
-      editor_show_completed: "Voltooide taken tonen", editor_show_add: "Toevoegformulier tonen",
-      editor_read_only: "Alleen lezen", editor_compact: "Compact", editor_hide_empty: "Verbergen als leeg",
-      view_list: "Lijst", view_today: "Vandaag-overzicht",
+      add_placeholder: "Taak toevoegen...  probeer: Mama bellen morgen 14:30 #familie !hoog",
+      add: "Toevoegen", options: "Opties", notes: "Notities", due_date: "Vervaldatum", due_time: "Tijd", priority: "Prioriteit",
+      tags: "Tags", new_tag: "Nieuwe tag", repeat: "Herhalen", none: "Geen", low: "Laag", medium: "Midden", high: "Hoog",
+      daily: "Dagelijks", weekly: "Wekelijks", monthly: "Maandelijks", yearly: "Jaarlijks", after_completion: "N dagen na afvinken",
+      every: "Elke", days: "dagen", save: "Opslaan", cancel: "Annuleren", delete: "Verwijderen", sure: "Zeker?",
+      snooze: "Uitstellen tot morgen", edit: "Bewerken", clear_completed: "Voltooide wissen", subtasks: "Subtaken",
+      add_subtask: "Subtaak toevoegen", history: "Geschiedenis", edit_task: "Taak bewerken", manual_order: "Handmatige volgorde",
+      overdue: "Achterstallig", today: "Vandaag", tomorrow: "Morgen", yesterday: "Gisteren", upcoming: "Binnenkort",
+      no_date: "Geen datum", done: "Voltooid", all: "Alle taken", days_ago: "dagen geleden", in_days: "over {n} dagen",
+      empty_all: "Niets te doen. Geniet van de rust.", empty_today: "Niets voor vandaag.", empty_upcoming: "Niets gepland.",
+      empty_done: "Geen voltooide taken.", loading: "Laden...", set_up: "Tickoff is nog niet ingesteld. Voeg het toe via Instellingen > Apparaten & diensten.",
+      next_week: "Volgende week", edit_tags: "Tags bewerken", wd: ["ma", "di", "wo", "do", "vr", "za", "zo"],
+      parsed: "Herkend", editor_title: "Titel", editor_view: "Weergave", editor_tags: "Alleen deze tags (leeg = alle)",
+      editor_show_done: "Voltooide taken tonen", editor_show_add: "Toevoegveld tonen", editor_read_only: "Alleen lezen",
+      editor_compact: "Compact", editor_hide_empty: "Verbergen als leeg", editor_manual: "Handmatige volgorde (slepen)",
+      view_all: "Alle taken", view_today: "Vandaag", view_upcoming: "Binnenkort", view_done: "Voltooid",
+      count_open: "open",
     },
   };
 
@@ -61,53 +65,111 @@
     const m = /^#([0-9a-f]{6})$/i.exec(bg || "");
     if (!m) return "#fff";
     const n = parseInt(m[1], 16);
-    const lum = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
-    return lum > 0.6 ? "#000" : "#fff";
+    return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255 > 0.6 ? "#000" : "#fff";
   }
 
-  function normalizeEntities(config) {
-    if (Array.isArray(config.entities)) return config.entities.map((e) => (typeof e === "string" ? e : e.entity));
-    if (config.entity) return [config.entity];
-    return [];
-  }
+  const pad = (n) => String(n).padStart(2, "0");
+  const isoDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const parseDate = (s) => new Date(`${s}T00:00:00`);
+  const addDays = (s, n) => { const d = parseDate(s); d.setDate(d.getDate() + n); return isoDate(d); };
+  const dayDiff = (a, b) => Math.round((parseDate(a) - parseDate(b)) / 86400000);
 
-  function selectedLists(snapshot, config) {
-    if (!snapshot) return [];
-    const wanted = normalizeEntities(config);
-    return snapshot.lists.filter((l) => !wanted.length || wanted.includes(l.entity_id));
-  }
+  const WEEKDAYS = {
+    mon: 0, monday: 0, ma: 0, maandag: 0, tue: 1, tuesday: 1, di: 1, dinsdag: 1, wed: 2, wednesday: 2, wo: 2, woensdag: 2,
+    thu: 3, thursday: 3, do: 3, donderdag: 3, fri: 4, friday: 4, vr: 4, vrijdag: 4, sat: 5, saturday: 5, za: 5, zaterdag: 5,
+    sun: 6, sunday: 6, zo: 6, zondag: 6,
+  };
+  const PRIORITY_WORDS = { "1": 1, l: 1, low: 1, laag: 1, "2": 2, m: 2, med: 2, medium: 2, midden: 2, "3": 3, h: 3, high: 3, hoog: 3 };
+  const REC_WORDS = { daily: "daily", dagelijks: "daily", weekly: "weekly", wekelijks: "weekly", monthly: "monthly", maandelijks: "monthly", yearly: "yearly", jaarlijks: "yearly" };
+  const UNIT_WORDS = { day: "daily", dag: "daily", week: "weekly", month: "monthly", maand: "monthly", year: "yearly", jaar: "yearly" };
 
-  /** Tasks to show as [{list, task}]: honours view, list selection, tag filter and the completed toggle. */
-  function visibleItems(snapshot, config, tagFilter) {
-    const out = [];
-    for (const list of selectedLists(snapshot, config)) {
-      for (const task of list.tasks) {
-        if (config.view === "today") {
-          if (task.state !== "overdue" && task.state !== "today") continue;
-        } else if (task.status === "done" && config.show_completed === false) continue;
-        if (tagFilter.size && !task.tags.some((t) => tagFilter.has(t))) continue;
-        out.push({ list, task });
-      }
+  /**
+   * Quick-add: "Call mom tomorrow 14:30 #family !high" -> {title, tags, priority, due_date, due_time, recurrence}.
+   * today = "YYYY-MM-DD" in the user's timezone. Words that are not understood stay in the title.
+   */
+  function parseQuickAdd(text, today) {
+    const words = text.trim().split(/\s+/).filter(Boolean);
+    const out = { title: "", tags: [], priority: 0, due_date: null, due_time: null, recurrence: null };
+    const kept = [];
+    for (let i = 0; i < words.length; i++) {
+      const w = words[i];
+      const lw = w.toLowerCase().replace(/[.,;]+$/, "");
+      let m;
+      if ((m = /^#(\S+)$/.exec(w))) out.tags.push(m[1].replace(/[.,;]+$/, ""));
+      else if ((m = /^!(\w+)$/.exec(lw)) && PRIORITY_WORDS[m[1]] !== undefined) out.priority = PRIORITY_WORDS[m[1]];
+      else if ((m = /^@?(\d{1,2}):(\d{2})$/.exec(lw)) && +m[1] < 24 && +m[2] < 60) out.due_time = `${pad(+m[1])}:${m[2]}`;
+      else if (lw === "today" || lw === "vandaag") out.due_date = today;
+      else if (lw === "tomorrow" || lw === "morgen") out.due_date = addDays(today, 1);
+      else if (lw === "overmorgen") out.due_date = addDays(today, 2);
+      else if (/^\d{4}-\d{2}-\d{2}$/.test(lw) && !isNaN(parseDate(lw))) out.due_date = lw;
+      else if (WEEKDAYS[lw] !== undefined && w.length > 2) {
+        const delta = (WEEKDAYS[lw] - ((parseDate(today).getDay() + 6) % 7) + 7) % 7 || 7;
+        out.due_date = addDays(today, delta);
+      } else if ((lw === "in" || lw === "over") && /^\d+$/.test(words[i + 1] || "") && /^(days?|dagen?|weeks?|weken?)$/i.test(words[i + 2] || "")) {
+        out.due_date = addDays(today, +words[i + 1] * (/^w/i.test(words[i + 2]) ? 7 : 1));
+        i += 2;
+      } else if (REC_WORDS[lw]) out.recurrence = { type: REC_WORDS[lw] };
+      else if ((lw === "every" || lw === "elke" || lw === "elk") && UNIT_WORDS[(words[i + 1] || "").toLowerCase()]) {
+        out.recurrence = { type: UNIT_WORDS[words[i + 1].toLowerCase()] };
+        i += 1;
+      } else kept.push(w);
     }
-    if (config.view === "today") {
-      const rank = { overdue: 0, today: 1 };
-      out.sort(
-        (a, b) =>
-          rank[a.task.state] - rank[b.task.state] ||
-          (a.task.due_date || "").localeCompare(b.task.due_date || "") ||
-          (a.task.due_time || "99").localeCompare(b.task.due_time || "99") ||
-          b.task.priority - a.task.priority,
-      );
-    } else {
-      // stable sort: open tasks first in manual order, completed ones at the bottom
-      out.sort((a, b) => (a.task.status === "done") - (b.task.status === "done"));
+    out.title = kept.join(" ").trim();
+    if (!out.title) return { title: text.trim(), tags: [], priority: 0, due_date: null, due_time: null, recurrence: null };
+    if (out.due_time && !out.due_date) out.due_date = today;
+    if (out.recurrence && out.recurrence.type === "weekly" && out.due_date) {
+      out.recurrence.weekdays = [(parseDate(out.due_date).getDay() + 6) % 7];
     }
+    out.tags = [...new Set(out.tags)];
     return out;
   }
 
-  function usedTags(snapshot, config) {
+  /** Sections for a view: [{key, tone, tasks}], tasks sorted for that section. */
+  function buildSections(snapshot, config, tagFilter) {
+    if (!snapshot) return [];
+    const wantTags = new Set([...(config.tags || []), ...tagFilter]);
+    const tasks = snapshot.tasks.filter((t) => !wantTags.size || t.tags.some((x) => wantTags.has(x)));
+    const today = snapshot.now.slice(0, 10);
+    const byDue = (a, b) =>
+      (a.due_date || "").localeCompare(b.due_date || "") || (a.due_time || "99").localeCompare(b.due_time || "99") ||
+      b.priority - a.priority;
+    const pick = (state) => tasks.filter((t) => t.state === state);
+    const view = config.view === "list" ? "all" : config.view || "all";
+
+    if (config.manual && view === "all") {
+      const open = tasks.filter((t) => t.status === "open");
+      return [{ key: "manual", tone: "", tasks: open }, ...(config.show_completed === false ? [] : [{ key: "done", tone: "muted", tasks: tasks.filter((t) => t.status === "done"), collapsed: true }])]
+        .filter((s) => s.tasks.length);
+    }
+    if (view === "done") {
+      return [{ key: "done_flat", tone: "", tasks: tasks.filter((t) => t.status === "done").sort((a, b) => (b.completed_at || "").localeCompare(a.completed_at || "")) }].filter((s) => s.tasks.length);
+    }
+    if (view === "today") {
+      return [{ key: "overdue", tone: "bad", tasks: pick("overdue").sort(byDue) }, { key: "today", tone: "warn", tasks: pick("today").sort(byDue) }].filter((s) => s.tasks.length);
+    }
+    if (view === "upcoming") {
+      const up = pick("upcoming").sort(byDue);
+      const groups = [];
+      for (const t of up) {
+        const last = groups[groups.length - 1];
+        if (last && last.date === t.due_date) last.tasks.push(t);
+        else groups.push({ key: "day", date: t.due_date, tone: "", tasks: [t] });
+      }
+      return groups;
+    }
+    const sections = [
+      { key: "overdue", tone: "bad", tasks: pick("overdue").sort(byDue) },
+      { key: "today", tone: "warn", tasks: pick("today").sort(byDue) },
+      { key: "upcoming", tone: "", tasks: pick("upcoming").sort(byDue) },
+      { key: "no_date", tone: "", tasks: pick("no_date") },
+    ];
+    if (config.show_completed !== false) sections.push({ key: "done", tone: "muted", tasks: tasks.filter((t) => t.status === "done").sort((a, b) => (b.completed_at || "").localeCompare(a.completed_at || "")), collapsed: true });
+    return sections.filter((s) => s.tasks.length);
+  }
+
+  function usedTags(snapshot) {
     const names = new Set();
-    for (const l of selectedLists(snapshot, config)) for (const t of l.tasks) t.tags.forEach((x) => names.add(x));
+    if (snapshot) for (const t of snapshot.tasks) t.tags.forEach((x) => names.add(x));
     return [...names].sort((a, b) => a.localeCompare(b));
   }
 
@@ -135,98 +197,154 @@
     return rule.interval > 1 ? `${t.every} ${rule.interval}: ${base}` : base;
   }
 
-  // ---------- the card ----------
+  /** Short relative label: Today, Tomorrow, Yesterday, 3 days ago, Mon 12 Mar. */
+  function relativeDay(date, today, t, lang) {
+    const d = dayDiff(date, today);
+    if (d === 0) return t.today;
+    if (d === 1) return t.tomorrow;
+    if (d === -1) return t.yesterday;
+    if (d < 0 && d > -15) return `${-d} ${t.days_ago}`;
+    return parseDate(date).toLocaleDateString(lang, { weekday: "short", day: "numeric", month: "short" });
+  }
+
+  // ---------- styles ----------
   const CSS = `
-    :host { display: block; }
-    ha-card { padding: 0 0 8px; overflow: hidden; }
-    .head { display: flex; align-items: center; gap: 8px; padding: 12px 16px 4px; }
-    .head h2 { margin: 0; font-size: 1.2em; font-weight: 500; flex: 1; }
-    .count { color: var(--secondary-text-color); font-size: .9em; }
-    .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 16px; align-items: center; }
-    .chip { border: 1px solid transparent; border-radius: 12px; padding: 2px 10px; font-size: .8em; cursor: pointer;
-            opacity: .55; user-select: none; }
-    .chip.on { opacity: 1; outline: 2px solid var(--primary-color); }
-    .chip.static { cursor: default; opacity: 1; padding: 0 8px; font-size: .75em; }
-    .tagedit input[type=color] { width: 24px; height: 24px; padding: 0; border: none; background: none; }
-    .add { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 16px; }
-    .add input[type=text] { flex: 1; min-width: 140px; }
-    input, select, textarea, button { font: inherit; color: var(--primary-text-color); }
-    input, select, textarea { background: var(--card-background-color, #fff); border: 1px solid var(--divider-color, #ccc);
-      border-radius: 6px; padding: 6px 8px; box-sizing: border-box; }
-    button { background: none; border: none; cursor: pointer; padding: 4px 6px; border-radius: 6px; }
-    button:hover { background: var(--secondary-background-color, #eee); }
-    button.primary { background: var(--primary-color); color: var(--text-primary-color, #fff); padding: 6px 12px; }
-    .more { display: none; flex-basis: 100%; gap: 6px; flex-wrap: wrap; }
-    .more.open { display: flex; }
-    .more textarea { flex-basis: 100%; }
-    .row { display: flex; align-items: flex-start; gap: 6px; padding: 6px 16px; border-top: 1px solid var(--divider-color, #eee); }
-    .row.dragover { background: var(--secondary-background-color, #eee); }
-    .row.done .title { text-decoration: line-through; color: var(--secondary-text-color); }
-    .handle { cursor: grab; color: var(--secondary-text-color); padding-top: 2px; user-select: none; }
-    .main { flex: 1; min-width: 0; cursor: pointer; }
-    .title { word-break: break-word; }
-    .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: .8em; color: var(--secondary-text-color); margin-top: 2px; }
-    .due.overdue { color: var(--error-color, #d32f2f); font-weight: 500; }
-    .due.today { color: var(--warning-color, #fb8c00); font-weight: 500; }
-    .prio { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
-    .actions { display: flex; opacity: .8; }
-    .detail { padding: 4px 0 4px 8px; font-size: .9em; flex: 1; }
-    .notes { white-space: pre-wrap; color: var(--secondary-text-color); margin-bottom: 4px; }
-    .sub { display: flex; align-items: center; gap: 6px; }
-    .sub.done span { text-decoration: line-through; color: var(--secondary-text-color); }
-    .subadd { margin-top: 4px; width: 100%; }
-    .hist { font-size: .75em; color: var(--secondary-text-color); margin-top: 4px; }
-    .editor { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0; flex: 1; }
-    .editor input[type=text], .editor textarea { flex-basis: 100%; }
-    .wd { display: flex; gap: 2px; flex-wrap: wrap; font-size: .8em; }
-    .foot { display: flex; justify-content: flex-end; padding: 4px 16px 0; }
-    .empty { padding: 16px; color: var(--secondary-text-color); text-align: center; }
-    .compact .row { padding: 2px 16px; } .compact .meta { margin-top: 0; }
-    .listname { font-size: .75em; color: var(--secondary-text-color); }
+    :host { display: block; --tk-radius: 14px; --tk-bad: var(--error-color, #d32f2f); --tk-warn: var(--warning-color, #f9a825);
+            --tk-line: var(--divider-color, rgba(127,127,127,.25)); --tk-muted: var(--secondary-text-color, #727272); }
+    * { box-sizing: border-box; }
+    ha-card { overflow: hidden; padding-bottom: 6px; }
+    button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; border-radius: 8px; padding: 0; }
+    input, select, textarea { font: inherit; color: var(--primary-text-color); background: var(--card-background-color, #fff);
+      border: 1px solid var(--tk-line); border-radius: 10px; padding: 8px 10px; min-width: 0; }
+    input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary-color); outline-offset: -1px; }
+    ha-icon { --mdc-icon-size: 20px; display: inline-flex; }
+    .head { display: flex; align-items: center; gap: 10px; padding: 14px 16px 6px; }
+    .head h2 { margin: 0; flex: 1; font-size: 1.25em; font-weight: 600; letter-spacing: .1px; }
+    .pill { font-size: .78em; font-weight: 600; padding: 2px 10px; border-radius: 999px; background: var(--secondary-background-color, #eee); color: var(--tk-muted); }
+    .pill.bad { background: color-mix(in srgb, var(--tk-bad) 16%, transparent); color: var(--tk-bad); }
+    .pill.warn { background: color-mix(in srgb, var(--tk-warn) 22%, transparent); color: color-mix(in srgb, var(--tk-warn) 70%, #000); }
+    .iconbtn { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; color: var(--tk-muted); }
+    .iconbtn:hover, .iconbtn.on { background: var(--secondary-background-color, #eee); color: var(--primary-text-color); }
+    .iconbtn.on { color: var(--primary-color); }
+    .iconbtn.danger:hover { color: var(--tk-bad); }
+
+    .adder { padding: 6px 16px 4px; }
+    .addbar { display: flex; align-items: center; gap: 6px; background: var(--secondary-background-color, #f2f2f2); border-radius: var(--tk-radius); padding: 2px 4px 2px 12px; }
+    .addbar:focus-within { outline: 2px solid var(--primary-color); }
+    .addbar > ha-icon { color: var(--tk-muted); }
+    .addbar input { flex: 1; border: none; background: transparent; padding: 10px 4px; outline: none !important; }
+    .addbtn { background: var(--primary-color); color: var(--text-primary-color, #fff); padding: 6px 14px; font-weight: 600; border-radius: 10px; margin: 4px 0; }
+    .addbtn:disabled { opacity: .4; cursor: default; }
+    .preview { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 4px 0; font-size: .82em; color: var(--tk-muted); align-items: center; }
+    .extra { display: none; gap: 8px; flex-wrap: wrap; padding: 10px 2px 2px; }
+    .extra.open { display: flex; }
+    .extra textarea { flex-basis: 100%; resize: vertical; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 16px 2px; align-items: center; }
+    .chip { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 3px 11px; font-size: .8em; cursor: pointer;
+            border: 1px solid transparent; user-select: none; transition: opacity .15s; }
+    .chip .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .chip.filter { background: var(--secondary-background-color, #eee); color: var(--primary-text-color); }
+    .chip.filter.on { outline: 2px solid var(--primary-color); }
+    .chip.tag { cursor: default; padding: 1px 9px; font-size: .74em; }
+    .tagcolor { width: 26px; height: 26px; padding: 0; border: none; background: none; }
+
+    .section { padding: 10px 16px 2px; display: flex; align-items: center; gap: 8px; font-size: .78em; font-weight: 700;
+               text-transform: uppercase; letter-spacing: .6px; color: var(--tk-muted); }
+    .section.bad { color: var(--tk-bad); } .section.warn { color: color-mix(in srgb, var(--tk-warn) 70%, #000); }
+    .section .n { font-weight: 500; opacity: .8; }
+    .section.click { cursor: pointer; } .section .grow { flex: 1; }
+    .task { display: flex; gap: 12px; align-items: flex-start; padding: 8px 16px; position: relative; transition: background .12s; }
+    .task:hover { background: color-mix(in srgb, var(--primary-text-color) 4%, transparent); }
+    .task.dragover { background: color-mix(in srgb, var(--primary-color) 14%, transparent); }
+    .handle { cursor: grab; color: var(--tk-muted); margin: 2px -6px 0 -6px; opacity: .6; }
+    .check { flex: none; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; border: 2px solid var(--tk-ring, var(--tk-muted));
+             background: transparent; display: inline-flex; align-items: center; justify-content: center; color: transparent; transition: all .15s; padding: 0; }
+    .check:hover { background: color-mix(in srgb, var(--tk-ring, var(--tk-muted)) 20%, transparent); color: var(--tk-ring, var(--tk-muted)); }
+    .check ha-icon { --mdc-icon-size: 16px; }
+    .task.done .check { background: var(--tk-ring, var(--tk-muted)); color: #fff; opacity: .7; }
+    .body { flex: 1; min-width: 0; cursor: pointer; }
+    .title { font-size: 1em; line-height: 1.35; word-break: break-word; }
+    .task.done .title { text-decoration: line-through; color: var(--tk-muted); }
+    .meta { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin-top: 3px; font-size: .8em; color: var(--tk-muted); }
+    .meta .due { display: inline-flex; align-items: center; gap: 3px; }
+    .meta .due.bad { color: var(--tk-bad); font-weight: 600; } .meta .due.warn { color: color-mix(in srgb, var(--tk-warn) 65%, #000); font-weight: 600; }
+    .meta ha-icon { --mdc-icon-size: 14px; }
+    .meta .sub { display: inline-flex; align-items: center; gap: 5px; }
+    .bar { width: 38px; height: 4px; border-radius: 2px; background: var(--tk-line); overflow: hidden; display: inline-block; }
+    .bar i { display: block; height: 100%; background: var(--primary-color); }
+    .actions { display: flex; flex: none; opacity: 0; transition: opacity .12s; }
+    .task:hover .actions, .task:focus-within .actions, .task.open .actions { opacity: 1; }
+    @media (hover: none) { .actions { opacity: 1; } }
+    .detail { padding: 2px 16px 8px 50px; }
+    .notes { white-space: pre-wrap; color: var(--tk-muted); font-size: .92em; margin-bottom: 6px; }
+    .subrow { display: flex; align-items: center; gap: 8px; padding: 2px 0; font-size: .95em; }
+    .subrow.done span { text-decoration: line-through; color: var(--tk-muted); }
+    .subrow .check { width: 18px; height: 18px; margin: 0; border-width: 2px; }
+    .subrow .check ha-icon { --mdc-icon-size: 13px; }
+    .subadd { width: 100%; margin-top: 6px; padding: 6px 10px; font-size: .92em; }
+    .hist { font-size: .75em; color: var(--tk-muted); margin-top: 8px; }
+    .empty { text-align: center; padding: 30px 16px; color: var(--tk-muted); }
+    .empty ha-icon { --mdc-icon-size: 44px; opacity: .45; display: block; margin: 0 auto 8px; }
+    .foot { display: flex; justify-content: flex-end; padding: 4px 12px 0; }
+    .foot button { padding: 6px 10px; color: var(--tk-muted); font-size: .85em; } .foot button:hover { color: var(--primary-text-color); background: var(--secondary-background-color); }
+    .compact .task { padding-top: 4px; padding-bottom: 4px; } .compact .meta { margin-top: 0; }
+
+    .overlay { position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .sheet { background: var(--card-background-color, #fff); color: var(--primary-text-color); width: min(520px, 100%); max-height: 92vh; overflow: auto;
+             border-radius: 18px; padding: 16px 18px 14px; box-shadow: 0 12px 40px rgba(0,0,0,.4); display: flex; flex-direction: column; gap: 14px; }
+    .sheet h3 { margin: 0; font-size: 1.15em; }
+    .sheet label.f { display: flex; flex-direction: column; gap: 5px; font-size: .78em; font-weight: 600; color: var(--tk-muted); text-transform: uppercase; letter-spacing: .4px; }
+    .sheet label.f > input, .sheet label.f > textarea, .sheet label.f > select { text-transform: none; font-weight: 400; font-size: 1rem; color: var(--primary-text-color); letter-spacing: 0; }
+    .row2 { display: flex; gap: 10px; } .row2 > * { flex: 1; }
+    .quick { display: flex; gap: 6px; flex-wrap: wrap; }
+    .seg { display: flex; border: 1px solid var(--tk-line); border-radius: 10px; overflow: hidden; }
+    .seg button { flex: 1; padding: 8px 4px; border-radius: 0; font-size: .9rem; text-transform: none; font-weight: 500; letter-spacing: 0; color: var(--primary-text-color); }
+    .seg button.on { background: var(--primary-color); color: var(--text-primary-color, #fff); }
+    .wd { display: flex; gap: 4px; flex-wrap: wrap; } .wd label { display: flex; align-items: center; gap: 3px; font-size: .85rem; text-transform: none; font-weight: 400; letter-spacing: 0; }
+    .sheetfoot { display: flex; gap: 8px; align-items: center; margin-top: 2px; } .sheetfoot .grow { flex: 1; }
+    .btn { padding: 9px 16px; border-radius: 10px; font-weight: 600; } .btn:hover { background: var(--secondary-background-color, #eee); }
+    .btn.primary { background: var(--primary-color); color: var(--text-primary-color, #fff); } .btn.primary:hover { filter: brightness(1.08); }
+    .btn.danger { color: var(--tk-bad); }
+    .newtag { display: inline-flex; gap: 4px; } .newtag input { width: 110px; padding: 3px 9px; border-radius: 999px; font-size: .8em; }
   `;
 
+  // ---------- the card ----------
   class TickoffCard extends HTMLElement {
     constructor() {
       super();
       this.attachShadow({ mode: "open" });
       this._tagFilter = new Set();
       this._open = new Set();
+      this._collapsed = { done: true };
       this._editing = null;
-      this._editTags = false;
       this._confirm = null;
+      this._editTags = false;
       this._t = I18N.en;
     }
 
-    static getConfigElement() {
-      return document.createElement("tickoff-card-editor");
-    }
+    static getConfigElement() { return document.createElement("tickoff-card-editor"); }
 
-    static getStubConfig(hass) {
-      const first = Object.keys((hass && hass.states) || {}).find((e) => e.startsWith("todo.tickoff_"));
-      return { view: "list", entities: first ? [first] : [] };
-    }
+    static getStubConfig() { return { view: "all" }; }
 
     setConfig(config) {
       if (!config) throw new Error("Invalid configuration");
-      this._config = { view: "list", show_completed: true, show_add: true, read_only: false, compact: false, ...config };
+      this._config = { view: "all", show_completed: true, show_add: true, read_only: false, compact: false, ...config };
       this._build();
       this._update();
     }
 
-    getCardSize() {
-      return 4;
-    }
+    getCardSize() { return 5; }
 
     set hass(hass) {
       this._hass = hass;
       const lang = ((hass.locale && hass.locale.language) || hass.language || "en").slice(0, 2);
+      this._lang = (hass.locale && hass.locale.language) || hass.language || "en";
       this._t = I18N[lang] || I18N.en;
       if (!this._unsub && !this._subscribing && this.isConnected) this._subscribe();
     }
 
-    connectedCallback() {
-      if (this._hass && !this._unsub && !this._subscribing) this._subscribe();
-    }
+    connectedCallback() { if (this._hass && !this._unsub && !this._subscribing) this._subscribe(); }
 
     disconnectedCallback() {
       if (this._unsub) this._unsub();
@@ -238,10 +356,7 @@
       this._subscribing = true;
       this._disconnected = false;
       try {
-        const unsub = await this._hass.connection.subscribeMessage((snap) => {
-          this._snap = snap;
-          this._update();
-        }, { type: "tickoff/subscribe" });
+        const unsub = await this._hass.connection.subscribeMessage((snap) => { this._snap = snap; this._update(); }, { type: "tickoff/subscribe" });
         if (this._disconnected) unsub();
         else this._unsub = unsub;
       } finally {
@@ -249,321 +364,355 @@
       }
     }
 
-    _call(service, data, entityId) {
-      return this._hass.callService("tickoff", service, data, entityId ? { entity_id: entityId } : undefined);
+    _call(service, data) {
+      return this._hass.callService("tickoff", service, data, this._snap && this._snap.entity_id ? { entity_id: this._snap.entity_id } : undefined);
     }
 
-    // ----- static skeleton (built once per config, so typed text in the add form survives updates) -----
+    get _today() { return this._snap ? this._snap.now.slice(0, 10) : isoDate(new Date()); }
+
+    // ----- static skeleton (built once per config so typed text survives updates) -----
     _build() {
+      const cfg = this._config;
       this.shadowRoot.innerHTML = `<style>${CSS}</style>
-        <ha-card class="${this._config.compact ? "compact" : ""}">
-          <div class="head"><h2></h2><span class="count"></span></div>
+        <ha-card class="${cfg.compact ? "compact" : ""}">
+          <div class="head"><h2></h2><span id="pills"></span><span id="headbtns"></span></div>
+          <div class="adder" id="adder"></div>
           <div class="chips" id="chips"></div>
-          <div class="add" id="add"></div>
           <div id="list"></div>
           <div class="foot" id="foot"></div>
+          <div id="overlay"></div>
         </ha-card>`;
       this._root = this.shadowRoot;
-      this._buildAdd();
-      const list = this._root.getElementById("list");
+      this._buildAdder();
+      const $ = (id) => this._root.getElementById(id);
+      const list = $("list");
       list.addEventListener("click", (e) => this._onClick(e));
       list.addEventListener("keydown", (e) => this._onKey(e));
-      list.addEventListener("change", (e) => this._onChange(e));
       list.addEventListener("dragstart", (e) => this._onDragStart(e));
       list.addEventListener("dragover", (e) => this._onDragOver(e));
-      list.addEventListener("dragleave", (e) => e.target.closest && e.target.closest(".row") && e.target.closest(".row").classList.remove("dragover"));
+      list.addEventListener("dragleave", (e) => { const r = e.target.closest && e.target.closest(".task"); if (r) r.classList.remove("dragover"); });
       list.addEventListener("drop", (e) => this._onDrop(e));
-      this._root.getElementById("chips").addEventListener("click", (e) => this._onChipClick(e));
-      this._root.getElementById("chips").addEventListener("input", (e) => this._onTagColor(e));
-      this._root.getElementById("foot").addEventListener("click", (e) => this._onFoot(e));
+      $("chips").addEventListener("click", (e) => this._onChip(e));
+      $("chips").addEventListener("input", (e) => this._onTagColor(e));
+      $("foot").addEventListener("click", (e) => this._onFoot(e));
+      $("headbtns").addEventListener("click", (e) => this._onHead(e));
+      $("overlay").addEventListener("click", (e) => this._onSheet(e));
+      $("overlay").addEventListener("keydown", (e) => { if (e.key === "Escape") { this._editing = null; this._update(); } });
     }
 
-    _buildAdd() {
+    _buildAdder() {
       const t = this._t;
-      const box = this._root.getElementById("add");
-      const hidden = !this._config.show_add || this._config.read_only || this._config.view === "today";
+      const box = this._root.getElementById("adder");
+      const hidden = !this._config.show_add || this._config.read_only || this._config.view === "done";
       box.style.display = hidden ? "none" : "";
-      box.innerHTML = `
-        <select id="addlist" style="display:none"></select>
-        <input type="text" id="addtitle" placeholder="${esc(t.add_placeholder)}">
-        <button class="primary" id="addbtn">${esc(t.add)}</button>
-        <button id="addmore" title="${esc(t.more)}">&#9881;</button>
-        <div class="more" id="addextra">
+      box.innerHTML = `<div class="addbar"><ha-icon icon="mdi:plus"></ha-icon>
+          <input type="text" id="addtitle" autocomplete="off" placeholder="${esc(t.add_placeholder)}">
+          <button class="iconbtn" id="addmore" title="${esc(t.options)}"><ha-icon icon="mdi:tune-variant"></ha-icon></button>
+          <button class="addbtn" id="addbtn" disabled>${esc(t.add)}</button></div>
+        <div class="preview" id="preview"></div>
+        <div class="extra" id="addextra">
           <textarea id="addnotes" rows="2" placeholder="${esc(t.notes)}"></textarea>
           <input type="date" id="adddate"><input type="time" id="addtime">
           <select id="addprio">${PRIO_NAMES.map((n, i) => `<option value="${i}">${esc(t.priority)}: ${esc(t[n])}</option>`).join("")}</select>
-          <input type="text" id="addtags" placeholder="${esc(t.tags)}">
           <select id="addrec">${REC_TYPES.map((v) => `<option value="${v}">${esc(v ? t[v] : t.repeat + ": " + t.none)}</option>`).join("")}</select>
-          <input type="number" id="addint" min="1" value="1" style="width:70px" title="${esc(t.every)}">
         </div>`;
       const $ = (id) => box.querySelector("#" + id);
       $("addbtn").addEventListener("click", () => this._submitAdd());
-      $("addtitle").addEventListener("keydown", (e) => e.key === "Enter" && this._submitAdd());
-      $("addmore").addEventListener("click", () => $("addextra").classList.toggle("open"));
+      $("addtitle").addEventListener("keydown", (e) => { if (e.key === "Enter") this._submitAdd(); });
+      $("addtitle").addEventListener("input", () => this._updatePreview());
+      $("addmore").addEventListener("click", () => { $("addextra").classList.toggle("open"); $("addmore").classList.toggle("on"); });
     }
 
-    _targetList() {
-      const sel = this._root.getElementById("addlist");
-      if (sel && sel.value) return sel.value;
-      const wanted = normalizeEntities(this._config);
-      return wanted[0] || (this._snap && this._snap.lists[0] && this._snap.lists[0].entity_id);
+    _updatePreview() {
+      const $ = (id) => this._root.getElementById(id);
+      const text = $("addtitle").value;
+      $("addbtn").disabled = !text.trim();
+      const p = parseQuickAdd(text, this._today);
+      const bits = [];
+      const t = this._t;
+      if (text.trim()) {
+        if (p.due_date) bits.push(`<span class="chip filter"><ha-icon icon="mdi:calendar"></ha-icon>${esc(relativeDay(p.due_date, this._today, t, this._lang))}${p.due_time ? " " + esc(p.due_time) : ""}</span>`);
+        if (p.priority) bits.push(`<span class="chip filter"><ha-icon icon="mdi:flag" style="color:${PRIO_COLORS[p.priority]}"></ha-icon>${esc(t[PRIO_NAMES[p.priority]])}</span>`);
+        if (p.recurrence) bits.push(`<span class="chip filter"><ha-icon icon="mdi:repeat"></ha-icon>${esc(describeRecurrence(p.recurrence, t))}</span>`);
+        for (const tag of p.tags) bits.push(`<span class="chip filter"><ha-icon icon="mdi:tag"></ha-icon>${esc(tag)}</span>`);
+      }
+      $("preview").innerHTML = bits.length ? `<span>${esc(t.parsed)}:</span>${bits.join("")}` : "";
     }
 
     _submitAdd() {
       const $ = (id) => this._root.getElementById(id);
-      const title = $("addtitle").value.trim();
-      const entity = this._targetList();
-      if (!title || !entity) return;
-      const data = { title };
+      const text = $("addtitle").value.trim();
+      if (!text || !this._snap) return;
+      const p = parseQuickAdd(text, this._today);
+      const data = { title: p.title };
+      const date = $("adddate").value || p.due_date;
+      const time = $("addtime").value || p.due_time;
       if ($("addnotes").value.trim()) data.notes = $("addnotes").value.trim();
-      if ($("adddate").value) data.due_date = $("adddate").value;
-      if ($("adddate").value && $("addtime").value) data.due_time = $("addtime").value + ":00";
-      if (+$("addprio").value) data.priority = +$("addprio").value;
-      const tags = $("addtags").value.split(",").map((x) => x.trim()).filter(Boolean);
-      if (tags.length) data.tags = tags;
+      if (date) data.due_date = date;
+      if (date && time) data.due_time = time.length === 5 ? time + ":00" : time;
+      const prio = +$("addprio").value || p.priority;
+      if (prio) data.priority = prio;
+      if (p.tags.length) data.tags = p.tags;
       const rec = $("addrec").value;
       if (rec) {
-        const weekday = $("adddate").value ? (new Date($("adddate").value + "T00:00:00").getDay() + 6) % 7 : null;
-        data.recurrence = recurrenceFromForm({
-          type: rec, interval: $("addint").value, days: $("addint").value, weekdays: weekday === null ? [] : [weekday],
-        });
-      }
-      this._call("add_task", data, entity);
-      for (const id of ["addtitle", "addnotes", "adddate", "addtime", "addtags"]) $(id).value = "";
+        const weekday = date ? (parseDate(date).getDay() + 6) % 7 : null;
+        data.recurrence = recurrenceFromForm({ type: rec, interval: 1, days: 1, weekdays: weekday === null ? [] : [weekday] });
+      } else if (p.recurrence) data.recurrence = p.recurrence;
+      this._call("add_task", data);
+      for (const id of ["addtitle", "addnotes", "adddate", "addtime"]) $(id).value = "";
       $("addprio").value = "0";
       $("addrec").value = "";
+      this._updatePreview();
     }
 
     // ----- rendering -----
+    _view() { return this._config.view === "list" ? "all" : this._config.view; }
+
     _update() {
       if (!this._root) return;
       const t = this._t;
       const snap = this._snap;
       const cfg = this._config;
       const root = this._root;
-      const lists = selectedLists(snap, cfg);
+      const view = this._view();
 
-      const title = cfg.title ?? (cfg.view === "today" ? t.today_title : lists.length === 1 ? lists[0].name : "Tickoff");
-      root.querySelector("h2").textContent = title;
+      root.querySelector("h2").textContent = cfg.title ?? t[{ all: "all", today: "today", upcoming: "upcoming", done: "done" }[view]] ?? "Tickoff";
+      const adder = root.getElementById("addtitle");
+      if (adder) adder.placeholder = t.add_placeholder;
 
-      const sel = root.getElementById("addlist");
-      if (sel) {
-        const prev = sel.value;
-        sel.innerHTML = lists.map((l) => `<option value="${esc(l.entity_id)}">${esc(l.name)}</option>`).join("");
-        sel.style.display = lists.length > 1 ? "" : "none";
-        if (lists.some((l) => l.entity_id === prev)) sel.value = prev;
-      }
+      // header pills and buttons
+      const open = snap ? snap.tasks.filter((x) => x.status === "open") : [];
+      const overdue = open.filter((x) => x.state === "overdue").length;
+      const today = open.filter((x) => x.state === "today").length;
+      root.getElementById("pills").innerHTML = snap
+        ? (overdue ? `<span class="pill bad">${overdue} ${esc(t.overdue.toLowerCase())}</span> ` : "") +
+          (today ? `<span class="pill warn">${today} ${esc(t.today.toLowerCase())}</span> ` : "") +
+          `<span class="pill">${open.length} ${esc(t.count_open)}</span>` : "";
+      root.getElementById("headbtns").innerHTML = !cfg.read_only && view === "all"
+        ? `<button class="iconbtn ${cfg.manual ? "on" : ""}" data-act="manual" title="${esc(t.manual_order)}"><ha-icon icon="mdi:sort"></ha-icon></button>` : "";
 
-      const tags = usedTags(snap, cfg);
+      // tag filter chips
+      const tags = usedTags(snap);
       for (const n of [...this._tagFilter]) if (!tags.includes(n)) this._tagFilter.delete(n);
-      const chips = tags.map((n) => {
-        const color = (snap.tags[n] && snap.tags[n].color) || "#9e9e9e";
-        const edit = this._editTags
-          ? `<span class="tagedit"><input type="color" data-tag="${esc(n)}" value="${esc(color)}"></span>` : "";
-        return `<span class="chip ${this._tagFilter.has(n) ? "on" : ""}" data-act="chip" data-tag="${esc(n)}"
-          style="background:${esc(color)};color:${textColor(color)}">${esc(n)}</span>${edit}`;
-      }).join("");
       root.getElementById("chips").innerHTML = tags.length
-        ? chips + (cfg.read_only ? "" : `<button data-act="edittags" title="${esc(t.edit_tags)}">&#127912;</button>`) : "";
+        ? tags.map((n) => {
+            const color = (snap.tags[n] && snap.tags[n].color) || "#9e9e9e";
+            return `<span class="chip filter ${this._tagFilter.has(n) ? "on" : ""}" data-act="chip" data-tag="${esc(n)}"><span class="dot" style="background:${esc(color)}"></span>${esc(n)}</span>` +
+              (this._editTags ? `<input class="tagcolor" type="color" data-tag="${esc(n)}" value="${esc(color)}">` : "");
+          }).join("") + (cfg.read_only ? "" : `<button class="iconbtn ${this._editTags ? "on" : ""}" data-act="edittags" title="${esc(t.edit_tags)}" style="width:28px;height:28px"><ha-icon icon="mdi:palette"></ha-icon></button>`)
+        : "";
 
-      const items = visibleItems(snap, cfg, this._tagFilter);
-      root.querySelector(".count").textContent = snap ? String(items.filter((i) => i.task.status !== "done").length) : "";
+      // sections and rows
       const box = root.getElementById("list");
       if (!snap) box.innerHTML = `<div class="empty">${esc(t.loading)}</div>`;
-      else if (!lists.length) box.innerHTML = `<div class="empty">${esc(t.no_lists)}</div>`;
-      else if (!items.length) box.innerHTML = `<div class="empty">${esc(t.nothing)}</div>`;
+      else if (!snap.entity_id) box.innerHTML = `<div class="empty"><ha-icon icon="mdi:cog-outline"></ha-icon>${esc(t.set_up)}</div>`;
       else {
-        let html = "";
-        let sectionDone = false;
-        for (const { list, task } of items) {
-          if (cfg.view !== "today" && task.status === "done" && !sectionDone) {
-            sectionDone = true;
-            html += `<div class="chips"><span class="count">${esc(t.done_tasks)}</span></div>`;
-          }
-          html += this._row(list, task, lists.length > 1 || cfg.view === "today");
+        const sections = buildSections(snap, cfg, this._tagFilter);
+        if (!sections.length) {
+          const key = { all: "empty_all", today: "empty_today", upcoming: "empty_upcoming", done: "empty_done" }[view];
+          box.innerHTML = `<div class="empty"><ha-icon icon="mdi:check-circle-outline"></ha-icon>${esc(t[key])}</div>`;
+        } else {
+          box.innerHTML = sections.map((s) => this._section(s)).join("");
         }
-        box.innerHTML = html;
       }
-      const doneCount = lists.reduce((n, l) => n + l.tasks.filter((x) => x.status === "done").length, 0);
-      root.getElementById("foot").innerHTML = doneCount && !cfg.read_only && cfg.view !== "today"
+      const doneCount = snap ? snap.tasks.filter((x) => x.status === "done").length : 0;
+      root.getElementById("foot").innerHTML = doneCount && !cfg.read_only && (view === "done" || view === "all")
         ? `<button data-act="clear">${esc(t.clear_completed)} (${doneCount})</button>` : "";
-      this.style.display = cfg.hide_when_empty && snap && !items.length ? "none" : "";
+      root.getElementById("overlay").innerHTML = this._editing && snap ? this._sheet(snap.tasks.find((x) => x.id === this._editing)) : "";
+      const hide = cfg.hide_when_empty && snap && !buildSections(snap, cfg, this._tagFilter).length;
+      this.style.display = hide ? "none" : "";
     }
 
-    _due(task) {
+    _sectionTitle(s) {
+      const t = this._t;
+      if (s.key === "day") return relativeDay(s.date, this._today, t, this._lang);
+      return t[{ overdue: "overdue", today: "today", upcoming: "upcoming", no_date: "no_date", done: "done", done_flat: "done", manual: "all" }[s.key]] || s.key;
+    }
+
+    _section(s) {
+      const collapsed = s.collapsed && this._collapsed[s.key];
+      const head = `<div class="section ${s.tone} ${s.collapsed ? "click" : ""}" ${s.collapsed ? `data-act="fold" data-key="${s.key}"` : ""}>
+          ${s.collapsed ? `<ha-icon icon="mdi:chevron-${collapsed ? "right" : "down"}"></ha-icon>` : ""}<span>${esc(this._sectionTitle(s))}</span><span class="n">${s.tasks.length}</span></div>`;
+      return head + (collapsed ? "" : s.tasks.map((task) => this._task(task, s)).join(""));
+    }
+
+    _dueChip(task) {
       if (!task.due_date) return "";
       const t = this._t;
-      const h = this._hass || {};
-      const lang = (h.locale && h.locale.language) || h.language || "en";
-      let label = new Date(task.due_date + "T00:00:00").toLocaleDateString(lang, { weekday: "short", day: "numeric", month: "short" });
+      const tone = task.state === "overdue" ? "bad" : task.state === "today" ? "warn" : "";
+      let label = relativeDay(task.due_date, this._today, t, this._lang);
       if (task.due_time) {
-        const fmt = h.locale && h.locale.time_format; // respects the user's 12/24 hour setting
+        const fmt = this._hass && this._hass.locale && this._hass.locale.time_format; // follows the 12/24 hour profile setting
         const opts = { hour: "2-digit", minute: "2-digit" };
         if (fmt === "12") opts.hour12 = true;
         else if (fmt === "24") opts.hour12 = false;
-        label += " " + new Date(`${task.due_date}T${task.due_time}`).toLocaleTimeString(lang, opts);
+        label += " " + new Date(`${task.due_date}T${task.due_time}`).toLocaleTimeString(this._lang, opts);
       }
-      return label + (task.state === "overdue" ? ` (${t.overdue.toLowerCase()})` : "");
+      return `<span class="due ${tone}"><ha-icon icon="mdi:calendar-clock"></ha-icon>${esc(label)}</span>`;
     }
 
-    _deleteBtn(task) {
-      return `<button data-act="delete" title="${esc(this._t.delete)}">${this._confirm === task.id ? esc(this._t.sure) : "&#128465;"}</button>`;
-    }
-
-    _row(list, task, showList) {
+    _task(task, section) {
       const t = this._t;
       const ro = this._config.read_only;
       const done = task.status === "done";
       const subs = task.subtasks || [];
       const subDone = subs.filter((s) => s.done).length;
+      const ring = PRIO_COLORS[task.priority] || "";
       const tagHtml = task.tags.map((n) => {
         const c = (this._snap.tags[n] && this._snap.tags[n].color) || "#9e9e9e";
-        return `<span class="chip static" style="background:${esc(c)};color:${textColor(c)}">${esc(n)}</span>`;
+        return `<span class="chip tag" style="background:${esc(c)};color:${textColor(c)}">${esc(n)}</span>`;
       }).join("");
       const rec = describeRecurrence(task.recurrence, t);
-      const draggable = !ro && this._config.view !== "today" && !done;
-      const attrs = `data-task="${esc(task.id)}" data-list="${esc(list.entity_id)}"`;
-      let html = `<div class="row ${done ? "done" : ""}" ${attrs} ${draggable ? 'draggable="true"' : ""}>
-        ${draggable ? '<span class="handle">&#8942;&#8942;</span>' : ""}
-        <input type="checkbox" data-act="toggle" ${done ? "checked" : ""} ${ro ? "disabled" : ""}>
-        <div class="main" data-act="expand">
-          <div class="title">${task.priority ? `<span class="prio" style="background:${PRIO_COLORS[task.priority]}" title="${esc(t[PRIO_NAMES[task.priority]])}"></span>` : ""}${esc(task.title)}</div>
-          <div class="meta">
-            ${task.due_date ? `<span class="due ${esc(task.state)}">${esc(this._due(task))}</span>` : ""}
-            ${rec ? `<span title="${esc(t.repeat)}">&#8635; ${esc(rec)}</span>` : ""}
-            ${subs.length ? `<span>&#9745; ${subDone}/${subs.length}</span>` : ""}
-            ${showList ? `<span class="listname">${esc(list.name)}</span>` : ""}
-            ${tagHtml}
-          </div>
+      const draggable = !ro && section.key === "manual" && !done;
+      const open = this._open.has(task.id);
+      let html = `<div class="task ${done ? "done" : ""} ${open ? "open" : ""}" data-task="${esc(task.id)}" ${draggable ? 'draggable="true"' : ""} style="${ring ? `--tk-ring:${ring}` : ""}">
+        ${draggable ? '<ha-icon class="handle" icon="mdi:drag-vertical"></ha-icon>' : ""}
+        <button class="check" data-act="toggle" ${ro ? "disabled" : ""} aria-label="toggle"><ha-icon icon="mdi:check"></ha-icon></button>
+        <div class="body" data-act="expand">
+          <div class="title">${esc(task.title)}</div>
+          <div class="meta">${this._dueChip(task)}
+            ${rec ? `<span class="due"><ha-icon icon="mdi:repeat"></ha-icon>${esc(rec)}</span>` : ""}
+            ${subs.length ? `<span class="sub"><span class="bar"><i style="width:${Math.round((subDone / subs.length) * 100)}%"></i></span>${subDone}/${subs.length}</span>` : ""}
+            ${tagHtml}</div>
         </div>
-        ${ro ? "" : done ? `<div class="actions">${this._deleteBtn(task)}</div>` : `<div class="actions">
-          <button data-act="snooze" title="${esc(t.snooze)}">&#9200;</button>
-          <button data-act="edit" title="${esc(t.edit)}">&#9998;</button>
-          ${this._deleteBtn(task)}
+        ${ro ? "" : `<div class="actions">
+          ${done ? "" : `<button class="iconbtn" data-act="snooze" title="${esc(t.snooze)}"><ha-icon icon="mdi:alarm-snooze"></ha-icon></button>
+          <button class="iconbtn" data-act="edit" title="${esc(t.edit)}"><ha-icon icon="mdi:pencil"></ha-icon></button>`}
+          <button class="iconbtn danger" data-act="delete" title="${esc(t.delete)}">${this._confirm === task.id ? `<b style="font-size:.7em">${esc(t.sure)}</b>` : '<ha-icon icon="mdi:delete-outline"></ha-icon>'}</button>
         </div>`}
       </div>`;
-      if (this._editing === task.id) html += this._editor(list, task);
-      else if (this._open.has(task.id)) html += this._detail(list, task);
+      if (open) {
+        const subHtml = subs.map((s) => `<div class="subrow ${s.done ? "done" : ""}" data-sub="${esc(s.id)}">
+            <button class="check" data-act="subtoggle" ${ro ? "disabled" : ""} style="${s.done ? "background:var(--tk-muted);color:#fff" : ""}"><ha-icon icon="mdi:check"></ha-icon></button><span>${esc(s.title)}</span>
+            ${ro ? "" : `<button class="iconbtn" data-act="subremove" style="width:24px;height:24px" title="${esc(t.delete)}"><ha-icon icon="mdi:close"></ha-icon></button>`}</div>`).join("");
+        const hist = (task.history || []).slice(-3).reverse().map((h) => `${esc(h.event)} ${esc((h.at || "").slice(0, 16).replace("T", " "))}`).join(" · ");
+        html += `<div class="detail" data-task="${esc(task.id)}">
+          ${task.notes ? `<div class="notes">${esc(task.notes)}</div>` : ""}${subHtml}
+          ${ro ? "" : `<input class="subadd" type="text" data-act="subadd" placeholder="${esc(t.add_subtask)}">`}
+          ${hist ? `<div class="hist">${esc(t.history)}: ${hist}</div>` : ""}</div>`;
+      }
       return html;
     }
 
-    _detail(list, task) {
+    _sheet(task) {
+      if (!task) return "";
       const t = this._t;
-      const ro = this._config.read_only;
-      const subs = (task.subtasks || []).map((s) => `<label class="sub ${s.done ? "done" : ""}">
-          <input type="checkbox" data-act="subtoggle" data-sub="${esc(s.id)}" ${s.done ? "checked" : ""} ${ro ? "disabled" : ""}>
-          <span>${esc(s.title)}</span>
-          ${ro ? "" : `<button data-act="subremove" data-sub="${esc(s.id)}" title="${esc(t.delete)}">&times;</button>`}</label>`).join("");
-      const hist = (task.history || []).slice(-3).reverse()
-        .map((h) => `${esc(h.event)} ${esc((h.at || "").slice(0, 16).replace("T", " "))}`).join(" &middot; ");
-      return `<div class="row" data-task="${esc(task.id)}" data-list="${esc(list.entity_id)}" style="border-top:none"><div class="detail">
-        ${task.notes ? `<div class="notes">${esc(task.notes)}</div>` : ""}
-        ${subs}
-        ${ro ? "" : `<input class="subadd" type="text" data-act="subadd" placeholder="${esc(t.add_subtask)}">`}
-        ${hist ? `<div class="hist">${esc(t.history)}: ${hist}</div>` : ""}
-      </div></div>`;
-    }
-
-    _editor(list, task) {
-      const t = this._t;
+      const snap = this._snap;
       const rule = task.recurrence || {};
       const wd = rule.weekdays || [];
-      return `<div class="row" data-task="${esc(task.id)}" data-list="${esc(list.entity_id)}" style="border-top:none"><div class="editor">
-        <input type="text" data-f="title" value="${esc(task.title)}">
-        <textarea data-f="notes" rows="2" placeholder="${esc(t.notes)}">${esc(task.notes)}</textarea>
-        <input type="date" data-f="due_date" value="${esc(task.due_date || "")}">
-        <input type="time" data-f="due_time" value="${esc(task.due_time || "")}">
-        <select data-f="priority">${[0, 1, 2, 3].map((p) => `<option value="${p}" ${task.priority === p ? "selected" : ""}>${esc(t[PRIO_NAMES[p]])}</option>`).join("")}</select>
-        <input type="text" data-f="tags" value="${esc(task.tags.join(", "))}" placeholder="${esc(t.tags)}">
-        <select data-f="rtype">${REC_TYPES.map((v) => `<option value="${v}" ${(rule.type || "") === v ? "selected" : ""}>${esc(v ? t[v] : t.repeat + ": " + t.none)}</option>`).join("")}</select>
-        <input type="number" min="1" data-f="rint" style="width:70px" value="${esc(rule.type === "after_completion" ? rule.days : rule.interval || 1)}">
-        <span class="wd">${t.wd.map((n, i) => `<label><input type="checkbox" data-f="wd" value="${i}" ${wd.includes(i) ? "checked" : ""}>${esc(n)}</label>`).join("")}</span>
-        <button class="primary" data-act="save">${esc(t.save)}</button><button data-act="cancel">${esc(t.cancel)}</button>
+      const allTags = Object.keys(snap.tags).sort((a, b) => a.localeCompare(b));
+      const today = this._today;
+      return `<div class="overlay" data-act="backdrop"><div class="sheet" role="dialog" data-task="${esc(task.id)}">
+        <h3>${esc(t.edit_task)}</h3>
+        <label class="f">${esc(t.editor_title)}<input type="text" data-f="title" value="${esc(task.title)}"></label>
+        <label class="f">${esc(t.notes)}<textarea data-f="notes" rows="3">${esc(task.notes)}</textarea></label>
+        <div class="f" style="display:flex;flex-direction:column;gap:6px"><span style="font-size:.78em;font-weight:600;color:var(--tk-muted);text-transform:uppercase;letter-spacing:.4px">${esc(t.due_date)}</span>
+          <div class="quick">
+            <button class="chip filter" data-act="qdate" data-d="${today}">${esc(t.today)}</button>
+            <button class="chip filter" data-act="qdate" data-d="${addDays(today, 1)}">${esc(t.tomorrow)}</button>
+            <button class="chip filter" data-act="qdate" data-d="${addDays(today, 7)}">${esc(t.next_week)}</button>
+            <button class="chip filter" data-act="qdate" data-d="">${esc(t.none)}</button></div>
+          <div class="row2"><input type="date" data-f="due_date" value="${esc(task.due_date || "")}"><input type="time" data-f="due_time" value="${esc(task.due_time || "")}"></div></div>
+        <div class="f" style="display:flex;flex-direction:column;gap:6px"><span style="font-size:.78em;font-weight:600;color:var(--tk-muted);text-transform:uppercase;letter-spacing:.4px">${esc(t.priority)}</span>
+          <div class="seg" data-f="priority" data-v="${task.priority}">${PRIO_NAMES.map((n, i) => `<button data-act="prio" data-v="${i}" class="${task.priority === i ? "on" : ""}">${esc(t[n])}</button>`).join("")}</div></div>
+        <div class="f" style="display:flex;flex-direction:column;gap:6px"><span style="font-size:.78em;font-weight:600;color:var(--tk-muted);text-transform:uppercase;letter-spacing:.4px">${esc(t.tags)}</span>
+          <div class="chips" style="padding:0" data-f="tags" data-v="${esc(JSON.stringify(task.tags))}">
+            ${allTags.map((n) => `<span class="chip filter ${task.tags.includes(n) ? "on" : ""}" data-act="sheettag" data-tag="${esc(n)}"><span class="dot" style="background:${esc(snap.tags[n].color)}"></span>${esc(n)}</span>`).join("")}
+            <span class="newtag"><input type="text" data-f="newtag" placeholder="${esc(t.new_tag)}"></span></div></div>
+        <div class="f" style="display:flex;flex-direction:column;gap:6px"><span style="font-size:.78em;font-weight:600;color:var(--tk-muted);text-transform:uppercase;letter-spacing:.4px">${esc(t.repeat)}</span>
+          <div class="row2"><select data-f="rtype">${REC_TYPES.map((v) => `<option value="${v}" ${(rule.type || "") === v ? "selected" : ""}>${esc(v ? t[v] : t.none)}</option>`).join("")}</select>
+          <input type="number" min="1" data-f="rint" value="${esc(rule.type === "after_completion" ? rule.days : rule.interval || 1)}"></div>
+          <div class="wd">${t.wd.map((n, i) => `<label><input type="checkbox" data-f="wd" value="${i}" ${wd.includes(i) ? "checked" : ""}>${esc(n)}</label>`).join("")}</div></div>
+        <div class="sheetfoot"><button class="btn danger" data-act="sheetdelete">${this._confirm === "sheet" ? esc(t.sure) : esc(t.delete)}</button><span class="grow"></span>
+          <button class="btn" data-act="cancel">${esc(t.cancel)}</button><button class="btn primary" data-act="save">${esc(t.save)}</button></div>
       </div></div>`;
     }
 
     // ----- events -----
-    _ctx(e) {
-      const row = e.target.closest("[data-task]");
-      if (!row || !this._snap) return {};
-      const list = this._snap.lists.find((l) => l.entity_id === row.dataset.list);
-      const task = list && list.tasks.find((x) => x.id === row.dataset.task);
-      return { row, list, task, entity: row.dataset.list };
+    _task_(e) {
+      const el = e.target.closest("[data-task]");
+      return el && this._snap ? this._snap.tasks.find((x) => x.id === el.dataset.task) : null;
     }
 
     _onClick(e) {
       const btn = e.target.closest("[data-act]");
-      if (!btn || btn.tagName === "INPUT") return; // checkboxes/inputs are handled by change/keydown
-      const { task, entity, row } = this._ctx(e);
-      if (!task) return;
+      if (!btn || btn.tagName === "INPUT") return;
       const act = btn.dataset.act;
-      if (act === "expand") {
-        this._open.has(task.id) ? this._open.delete(task.id) : this._open.add(task.id);
-        this._update();
-        return;
-      }
+      if (act === "fold") { this._collapsed[btn.dataset.key] = !this._collapsed[btn.dataset.key]; this._update(); return; }
+      const task = this._task_(e);
+      if (!task) return;
+      if (act === "expand") { this._open.has(task.id) ? this._open.delete(task.id) : this._open.add(task.id); this._update(); return; }
       if (this._config.read_only) return;
-      if (act === "snooze") this._call("snooze_task", { task_id: task.id }, entity);
+      if (act === "toggle") this._call(task.status === "done" ? "reopen_task" : "complete_task", { task_id: task.id });
+      else if (act === "snooze") this._call("snooze_task", { task_id: task.id });
+      else if (act === "edit") { this._editing = task.id; this._update(); }
       else if (act === "delete") {
-        if (this._confirm === task.id) {
-          this._confirm = null;
-          this._call("delete_task", { task_id: task.id }, entity);
-        } else {
+        if (this._confirm === task.id) { this._confirm = null; this._call("delete_task", { task_id: task.id }); }
+        else {
           this._confirm = task.id; // second click within 3 s confirms
           this._update();
           clearTimeout(this._confirmTimer);
           this._confirmTimer = setTimeout(() => { this._confirm = null; this._update(); }, 3000);
         }
-      } else if (act === "edit") {
-        this._editing = task.id;
-        this._update();
-      } else if (act === "cancel") {
-        this._editing = null;
-        this._update();
-      } else if (act === "save") this._saveEdit(this._root.querySelector(".editor"), task, entity);
-      else if (act === "subremove") this._call("remove_subtask", { task_id: task.id, subtask_id: btn.dataset.sub }, entity);
-      void row;
-    }
-
-    _onChange(e) {
-      const el = e.target;
-      if (el.dataset.act !== "subtoggle" && el.dataset.act !== "toggle") return;
-      const { task, entity } = this._ctx(e);
-      if (!task || this._config.read_only) return;
-      if (el.dataset.act === "subtoggle") this._call("update_subtask", { task_id: task.id, subtask_id: el.dataset.sub, done: el.checked }, entity);
-      else this._call(el.checked ? "complete_task" : "reopen_task", { task_id: task.id }, entity);
+      } else if (act === "subtoggle") {
+        const sub = task.subtasks.find((s) => s.id === btn.closest("[data-sub]").dataset.sub);
+        this._call("update_subtask", { task_id: task.id, subtask_id: sub.id, done: !sub.done });
+      } else if (act === "subremove") this._call("remove_subtask", { task_id: task.id, subtask_id: btn.closest("[data-sub]").dataset.sub });
     }
 
     _onKey(e) {
       if (e.key !== "Enter" || e.target.dataset.act !== "subadd" || !e.target.value.trim()) return;
-      const { task, entity } = this._ctx(e);
+      const task = this._task_(e);
       if (!task) return;
-      this._call("add_subtask", { task_id: task.id, title: e.target.value.trim() }, entity);
+      this._call("add_subtask", { task_id: task.id, title: e.target.value.trim() });
       e.target.value = "";
     }
 
-    _saveEdit(ed, task, entity) {
-      const f = (n) => ed.querySelector(`[data-f="${n}"]`);
-      const date = f("due_date").value;
-      const data = {
-        task_id: task.id,
-        title: f("title").value.trim() || task.title,
-        notes: f("notes").value.trim() || null,
-        due_date: date || null,
-        due_time: date && f("due_time").value ? f("due_time").value + ":00" : null,
-        priority: +f("priority").value,
-        tags: f("tags").value.split(",").map((x) => x.trim()).filter(Boolean),
-        recurrence: recurrenceFromForm({
-          type: f("rtype").value, interval: f("rint").value, days: f("rint").value,
-          weekdays: [...ed.querySelectorAll('[data-f="wd"]:checked')].map((x) => +x.value),
-        }),
-      };
-      this._editing = null;
-      this._call("update_task", data, entity);
-      this._update();
+    _onSheet(e) {
+      const btn = e.target.closest("[data-act]");
+      if (!btn) return;
+      const act = btn.dataset.act;
+      const sheet = this._root.querySelector(".sheet");
+      if (act === "backdrop" && e.target === btn) { this._editing = null; this._update(); return; }
+      if (!sheet) return;
+      const f = (n) => sheet.querySelector(`[data-f="${n}"]`);
+      const task = this._snap.tasks.find((x) => x.id === sheet.dataset.task);
+      if (act === "qdate") { f("due_date").value = btn.dataset.d; if (!btn.dataset.d) f("due_time").value = ""; }
+      else if (act === "prio") { sheet.querySelectorAll('[data-act="prio"]').forEach((b) => b.classList.toggle("on", b === btn)); f("priority").dataset.v = btn.dataset.v; }
+      else if (act === "sheettag") btn.classList.toggle("on");
+      else if (act === "cancel") { this._editing = null; this._confirm = null; this._update(); }
+      else if (act === "sheetdelete") {
+        if (this._confirm === "sheet") { this._confirm = null; this._editing = null; this._call("delete_task", { task_id: task.id }); this._update(); }
+        else { this._confirm = "sheet"; btn.textContent = this._t.sure; }
+      } else if (act === "save") {
+        const date = f("due_date").value;
+        const tags = [...sheet.querySelectorAll('[data-act="sheettag"].on')].map((c) => c.dataset.tag);
+        const extra = f("newtag").value.split(",").map((x) => x.trim()).filter(Boolean);
+        const data = {
+          task_id: task.id,
+          title: f("title").value.trim() || task.title,
+          notes: f("notes").value.trim() || null,
+          due_date: date || null,
+          due_time: date && f("due_time").value ? f("due_time").value + ":00" : null,
+          priority: +f("priority").dataset.v,
+          tags: [...tags, ...extra],
+          recurrence: recurrenceFromForm({
+            type: f("rtype").value, interval: f("rint").value, days: f("rint").value,
+            weekdays: [...sheet.querySelectorAll('[data-f="wd"]:checked')].map((x) => +x.value),
+          }),
+        };
+        this._editing = null;
+        this._call("update_task", data);
+        this._update();
+      }
     }
 
-    _onChipClick(e) {
+    _onHead(e) {
+      const btn = e.target.closest("[data-act]");
+      if (btn && btn.dataset.act === "manual") { this._config = { ...this._config, manual: !this._config.manual }; this._update(); }
+    }
+
+    _onChip(e) {
       const chip = e.target.closest("[data-act]");
       if (!chip) return;
       if (chip.dataset.act === "edittags") this._editTags = !this._editTags;
@@ -576,60 +725,47 @@
 
     _onTagColor(e) {
       const el = e.target;
-      if (el.type === "color" && el.dataset.tag && !this._config.read_only) this._call("set_tag", { name: el.dataset.tag, color: el.value });
+      if (el.type === "color" && el.dataset.tag && !this._config.read_only) this._call_global("set_tag", { name: el.dataset.tag, color: el.value });
     }
 
-    _onFoot(e) {
-      if (!e.target.closest("[data-act=clear]")) return;
-      const wanted = normalizeEntities(this._config);
-      for (const l of this._snap.lists) {
-        if ((!wanted.length || wanted.includes(l.entity_id)) && l.tasks.some((t) => t.status === "done")) {
-          this._call("delete_completed", {}, l.entity_id);
-        }
-      }
-    }
+    _call_global(service, data) { return this._hass.callService("tickoff", service, data); }
+
+    _onFoot(e) { if (e.target.closest("[data-act=clear]")) this._call("delete_completed", {}); }
 
     _onDragStart(e) {
-      const row = e.target.closest && e.target.closest(".row[data-task]");
+      const row = e.target.closest && e.target.closest(".task[data-task]");
       if (!row || row.getAttribute("draggable") !== "true") return;
-      this._drag = { id: row.dataset.task, list: row.dataset.list };
+      this._drag = { id: row.dataset.task };
       if (e.dataTransfer) e.dataTransfer.setData("text/plain", row.dataset.task);
     }
 
     _onDragOver(e) {
-      const row = e.target.closest && e.target.closest(".row[data-task]");
-      if (!row || !this._drag || row.dataset.list !== this._drag.list) return;
+      const row = e.target.closest && e.target.closest(".task[data-task]");
+      if (!row || !this._drag) return;
       e.preventDefault();
       row.classList.add("dragover");
     }
 
     _onDrop(e) {
-      const row = e.target.closest && e.target.closest(".row[data-task]");
+      const row = e.target.closest && e.target.closest(".task[data-task]");
       const drag = this._drag;
       this._drag = null;
       this._root.querySelectorAll(".dragover").forEach((x) => x.classList.remove("dragover"));
-      if (!row || !drag || row.dataset.list !== drag.list || row.dataset.task === drag.id) return;
+      if (!row || !drag || row.dataset.task === drag.id) return;
       e.preventDefault();
-      const list = this._snap.lists.find((l) => l.entity_id === drag.list);
-      const order = list.tasks.map((t) => t.id);
+      const order = this._snap.tasks.map((t) => t.id);
       const after = order.indexOf(drag.id) < order.indexOf(row.dataset.task);
-      const previous = dropTarget(list.tasks, drag.id, row.dataset.task, after);
+      const previous = dropTarget(this._snap.tasks, drag.id, row.dataset.task, after);
       if (previous === undefined) return;
-      this._call("move_task", previous === null ? { task_id: drag.id } : { task_id: drag.id, previous_task_id: previous }, drag.list);
+      this._call("move_task", previous === null ? { task_id: drag.id } : { task_id: drag.id, previous_task_id: previous });
     }
   }
 
   // ---------- visual editor (ha-form) ----------
   class TickoffCardEditor extends HTMLElement {
-    setConfig(config) {
-      this._config = config;
-      this._render();
-    }
+    setConfig(config) { this._config = config; this._render(); }
 
-    set hass(hass) {
-      this._hass = hass;
-      this._render();
-    }
+    set hass(hass) { this._hass = hass; this._render(); }
 
     _render() {
       if (!this._hass || !this._config) return;
@@ -642,22 +778,23 @@
           const v = { ...e.detail.value };
           v.hide_when_empty = !!v.hide_empty; // the form field is called hide_empty, the config key hide_when_empty
           delete v.hide_empty;
-          if (!v.entities || !v.entities.length) delete v.entities;
+          if (!v.tags || !v.tags.length) delete v.tags;
           this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: v }, bubbles: true, composed: true }));
         });
         this.appendChild(this._form);
       }
-      const data = { view: "list", show_completed: true, show_add: true, ...this._config };
+      const data = { view: "all", show_completed: true, show_add: true, ...this._config };
       data.hide_empty = !!data.hide_when_empty;
       this._form.hass = this._hass;
       this._form.data = data;
       this._form.computeLabel = (s) => t["editor_" + s.name] || s.name;
       this._form.schema = [
         { name: "title", selector: { text: {} } },
-        { name: "view", selector: { select: { mode: "dropdown", options: [{ value: "list", label: t.view_list }, { value: "today", label: t.view_today }] } } },
-        { name: "entities", selector: { entity: { multiple: true, domain: "todo", integration: "tickoff" } } },
+        { name: "view", selector: { select: { mode: "dropdown", options: ["all", "today", "upcoming", "done"].map((v) => ({ value: v, label: t["view_" + v] })) } } },
+        { name: "tags", selector: { text: { multiple: true } } },
         { name: "show_completed", selector: { boolean: {} } },
         { name: "show_add", selector: { boolean: {} } },
+        { name: "manual", selector: { boolean: {} } },
         { name: "read_only", selector: { boolean: {} } },
         { name: "compact", selector: { boolean: {} } },
         { name: "hide_empty", selector: { boolean: {} } },
@@ -669,10 +806,8 @@
   customElements.define("tickoff-card-editor", TickoffCardEditor);
   window.customCards = window.customCards || [];
   window.customCards.push({
-    type: "tickoff-card",
-    name: "Tickoff",
-    description: "Tasks with tags, priority, subtasks, recurrence and a today overview.",
-    preview: false,
+    type: "tickoff-card", name: "Tickoff", preview: false,
+    description: "Tasks with quick add, tags, priority, subtasks, recurrence and a today view.",
   });
-  window.__tickoff = { esc, textColor, visibleItems, usedTags, dropTarget, recurrenceFromForm, describeRecurrence, VERSION };
+  window.__tickoff = { esc, textColor, parseQuickAdd, buildSections, usedTags, dropTarget, recurrenceFromForm, describeRecurrence, relativeDay, VERSION };
 })();

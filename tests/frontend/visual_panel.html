@@ -1,0 +1,31 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>tickoff panel visual</title>
+<style>
+  :root { --primary-color:#03a9f4; --primary-text-color:#212121; --secondary-text-color:#727272; --card-background-color:#fff;
+    --secondary-background-color:#f1f1f1; --divider-color:#e0e0e0; --text-primary-color:#fff; --error-color:#db4437; --warning-color:#f9a825;
+    --primary-background-color:#fafafa; --app-header-background-color:#03a9f4; --app-header-text-color:#fff; font-family: Roboto, "Segoe UI", sans-serif; }
+  html, body { height: 100%; margin: 0; } tickoff-panel { height: 100%; }
+  ha-card { display:block; background: var(--card-background-color); border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,.25); }
+</style></head>
+<body>
+<script>
+  const G = {check:"✓", plus:"+", "tune-variant":"⚙", "calendar-clock":"◷", repeat:"↻", "alarm-snooze":"⏰", pencil:"✎", "delete-outline":"🗑",
+    "chevron-right":"›", "chevron-down":"⌄", sort:"⇅", palette:"◐", tag:"#", flag:"⚑", calendar:"▦", "check-circle-outline":"✓", close:"×", "drag-vertical":"⋮", "cog-outline":"⚙",
+    menu:"☰", "calendar-today":"▣", "calendar-month-outline":"▤", "format-list-checks":"☑", "check-all":"✓✓", "tag-multiple-outline":"#", "send-circle":"✈", "bell-outline":"🔔", "cellphone-message":"📱", send:"➤"};
+  customElements.define("ha-icon", class extends HTMLElement { connectedCallback(){ this.textContent = G[(this.getAttribute("icon")||"").slice(4)] || "•"; }
+    static get observedAttributes(){return ["icon"];} attributeChangedCallback(){ if(this.isConnected) this.connectedCallback(); } });
+</script>
+<script src="../../custom_components/tickoff/www/tickoff-card.js"></script>
+<script src="../../custom_components/tickoff/www/tickoff-panel.js"></script>
+<script>
+  const T = (id, title, o = {}) => ({ id, title, notes: "", due_date: null, due_time: null, priority: 0, tags: [], subtasks: [], recurrence: null, status: "open", completed_at: null, history: [], state: "no_date", ...o });
+  const snap = { now: "2026-03-10T09:00:00+01:00", entity_id: "todo.tickoff",
+    tags: { garden: { color: "#43a047" }, home: { color: "#1e88e5" }, work: { color: "#8e24aa" } },
+    settings: { notify_targets: ["entity:notify.telegram_remco"], notify_time: "08:00:00" },
+    notify_targets: [{ value: "entity:notify.telegram_remco", label: "Telegram · Home Assistant Remco", telegram: true }, { value: "service:mobile_app_phone", label: "notify.mobile_app_phone", telegram: false }],
+    tasks: [T("1", "Pay the electricity bill", { priority: 3, tags: ["work"], due_date: "2026-03-08", state: "overdue" }), T("2", "Call the dentist", { priority: 2, tags: ["home"], due_date: "2026-03-10", due_time: "14:30", state: "today" }), T("3", "Water the plants", { tags: ["garden"], due_date: "2026-03-10", state: "today" })] };
+  const p = document.createElement("tickoff-panel"); document.body.appendChild(p);
+  p.hass = { language: "en", locale: { language: "en", time_format: "24" }, user: { is_admin: true }, callService() {}, callWS: async () => ({}), connection: { subscribeMessage: async (cb) => { setTimeout(() => cb(snap), 0); return () => {}; } } };
+  p.narrow = false;
+  setTimeout(() => p._go(location.hash.slice(1) || "today"), 30);
+</script></body></html>

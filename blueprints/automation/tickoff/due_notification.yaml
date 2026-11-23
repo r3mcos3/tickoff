@@ -3,19 +3,13 @@ blueprint:
   description: >-
     Sends a notification when Tickoff reports a task as due (the `tickoff_task_due` event,
     fired once per task per due date). Use it when you want a different message, target or
-    extra conditions than the built-in notify service option.
+    extra conditions than the built-in notification targets (Settings in the Tickoff panel).
   domain: automation
   source_url: https://github.com/r3mcos3/tickoff/blob/main/blueprints/automation/tickoff/due_notification.yaml
   input:
     notify_service:
       name: Notify service
       description: For example notify.mobile_app_my_phone
-      selector:
-        text: {}
-    only_list:
-      name: Only for this list (optional)
-      description: Exact list name; leave empty for all lists.
-      default: ""
       selector:
         text: {}
     min_priority:
@@ -39,18 +33,14 @@ conditions:
   - condition: template
     value_template: >-
       {{ trigger.event.data.priority | int(0) >= (min_priority | int(0)) }}
-  - condition: template
-    value_template: >-
-      {{ only_list == '' or trigger.event.data.list_name == only_list }}
 
 variables:
   notify_service: !input notify_service
-  only_list: !input only_list
   min_priority: !input min_priority
 
 actions:
   - action: "{{ notify_service }}"
     data:
-      title: "Tickoff · {{ trigger.event.data.list_name }}"
+      title: "Tickoff"
       message: >-
         {{ trigger.event.data.title }}{% if trigger.event.data.due_time %} ({{ trigger.event.data.due_time }}){% endif %}

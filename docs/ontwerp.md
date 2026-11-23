@@ -1,5 +1,7 @@
 # Ontwerp Tickoff
 
+> **Update 0.3.0:** het lijstenmodel is vervangen door één takenverzameling (geen lijsten meer; organiseren met tags en slimme weergaven). Entiteiten: `todo.tickoff` en `sensor.tickoff_open|today|overdue`. Meldingsdoelen (meerdere) zijn `notify`-services of -entiteiten, Telegram wordt herkend en bovenaan getoond; de zijbalk (`/tickoff`) is de hoofd-UI naast de kaart. Oude lijsten worden bij de eerste start samengevoegd (`migrate.py`). De rest van dit document beschrijft de oorspronkelijke opzet; waar het over lijsten gaat is het achterhaald.
+
 > Tickoff: tasks for Home Assistant. Domein `tickoff`, entiteiten `todo.tickoff_<lijst>`.
 
 Standalone HA custom integration voor taken. Geen afhankelijkheid van Keepr; Keepr is alleen de bron van de kernfeatures. Zie `vergelijking.md` voor het waarom.

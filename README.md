@@ -5,33 +5,28 @@
 [![CI](https://github.com/r3mcos3/tickoff/actions/workflows/ci.yaml/badge.svg)](https://github.com/r3mcos3/tickoff/actions/workflows/ci.yaml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Tickoff keeps your to-dos in Home Assistant itself: no cloud, no account, no other app needed. Every list is a
-standard `todo` entity (so it works in the Companion app, with Assist and in every to-do card), and on top of that
-you get priorities, **global coloured tags**, subtasks, recurring tasks, snooze, count sensors, due-date
-notifications and a dashboard card.
+One place for all your tasks, inside Home Assistant: no cloud, no account, no other app. Tickoff adds a **Tickoff
+item to the sidebar** (today, upcoming, all, completed, per tag), a **dashboard card**, a standard `todo` entity
+(works in the Companion app and with Assist), count sensors, and **due-date notifications to Telegram or your phone**.
 
-> **Status: early release (v0.2.0).** It is tested with automated tests (backend and card, see below) but has not yet
-> been used for long in a real Home Assistant. Back up before you try it, and please report problems.
+> **Status: early release (v0.3.0).** Automated tests cover the backend and the UI (see below), but Tickoff has not
+> been used for long in a real Home Assistant yet. Back up before you try it and please report problems.
 
-## Features
+## What it does
 
-- **Lists**: one entry per list, `todo.tickoff_<list>`; the friendly name is just the list name.
-- **Tasks**: title, notes, due date with optional time, priority (none/low/medium/high), manual order.
-- **Tags**: one **global** register with colours, shared by all lists. Rename or delete a tag once, it changes everywhere
-  (also in lists that are currently disabled).
-- **Subtasks**: ticking the last subtask completes the task; un-ticking one reopens it.
-- **Recurring tasks** with rollover when you tick them off: daily, weekly (on chosen weekdays), monthly, yearly,
-  or *N days after completing*. Fixed schedules never pile up missed occurrences and don't drift
-  (31st → 28th → 31st). Subtasks reset on rollover.
-- **Snooze to tomorrow**, **delete completed**, **history** per task (created, completed, reopened, snoozed, with `completed_at`).
-- **Sensors**: open / due today / overdue, per list and over all lists (the *Tickoff* overview).
-- **Notifications**: a built-in notify-service option (per list or one global default) plus the `tickoff_task_due`
-  event and a blueprint. Once per task per due date, also across restarts. 08:00 (configurable) for tasks without a
-  time, otherwise at the set time.
-- **Sidebar panel**: a *Tickoff* item in the Home Assistant menu where you do everything in one place (see below).
-- **Dashboard card** (`custom:tickoff-card`): list view and today overview, tag chips with colour and filter,
-  priority, subtasks, drag & drop ordering, snooze, edit, bulk-clear and a visual editor. Registered automatically.
-- Languages: English and Dutch.
+- **Just tasks, no lists.** One collection; organise with tags and smart views.
+- **Quick add**: type `Call mom tomorrow 14:30 #family !high` and Tickoff understands the date, time, tag and priority
+  (also Dutch: `morgen`, `vrijdag`, `over 3 dagen`, `!hoog`, `elke week`). A preview shows what it understood.
+- **Smart views**: Today (overdue + today), Upcoming (per day), All tasks (grouped: overdue, today, upcoming, no date,
+  completed), Completed, and one view per tag. Optional manual order with drag & drop.
+- **Tasks**: title, notes, due date with optional time, priority, tags with colours (one global register), subtasks
+  with progress, snooze to tomorrow, history.
+- **Recurring tasks** with rollover when you tick them off: daily, weekly (chosen weekdays), monthly, yearly, or
+  *N days after completing*. Late ticking never creates a backlog and monthly tasks don't drift (31st → 28th → 31st).
+- **Notifications** on the due date, **once per task**, also across restarts: choose one or more targets (**Telegram**,
+  mobile app, any notify service or entity), a test button included.
+- **Sensors**: `sensor.tickoff_open`, `sensor.tickoff_today`, `sensor.tickoff_overdue`, plus events and services for automations.
+- English and Dutch.
 
 ## Installation
 
@@ -50,100 +45,96 @@ Click the button, or open **Settings → Marketplace** and search for **Tickoff*
 
 ### Manual
 
-Copy `custom_components/tickoff/` into your `config/custom_components/` folder and restart.
+Copy `custom_components/tickoff/` into `config/custom_components/` and restart.
 
-## Configuration
+## Setup
 
-**Settings → Devices & services → Add integration → Tickoff.** Give the list a name, e.g. `Groceries`, and optionally
-pick a notify service. Repeat for each list.
+**Settings → Devices & services → Add integration → Tickoff.** There is nothing to configure: optionally pick where
+notifications go. A **Tickoff** item appears in the sidebar. (You can hide it per user in your profile.)
 
-The first list also creates an **overview entry** called *Tickoff*. Its **Configure** button sets:
+### Upgrading from 0.1 / 0.2 (lists)
 
-| Option | Meaning |
+Older versions had separate lists. On the first start of this version all lists are **merged into one collection**
+(order kept, tags kept) and the entities become `todo.tickoff` and `sensor.tickoff_open` / `_today` / `_overdue`.
+The old per-list entity ids disappear, so update automations and dashboards that used them. The old notify service
+settings are carried over as notification targets. Make a backup first.
+
+## The sidebar panel
+
+| | |
 |---|---|
-| Notify service | Default for every list without its own service |
-| Notification time | Time for tasks that have a date but no time (default 08:00) |
+| **Today / Upcoming / All tasks / Completed** | The task views, with quick add, tag filter, edit sheet and bulk clear |
+| **Tags** (in the menu) | One view per tag; **Manage tags** changes colour, renames, deletes (applies to every task) |
+| **Settings** | Where notifications go (Telegram, phone, ...), the notification time and a test button |
 
-Each list's own **Configure** button sets that list's notify service (it overrides the default). Notify services are
-entered without the domain, e.g. `mobile_app_my_phone`.
+Everyone can work with tasks; only administrators change the settings.
 
-### Entities
+## Notifications (Telegram and more)
 
-| Entity | What |
-|---|---|
-| `todo.tickoff_<list>` | The list. Title, notes, due date/time, status, order. Ticking a recurring task rolls it over |
-| `sensor.tickoff_<list>_open` / `_today` / `_overdue` | Counts for that list |
-| `sensor.tickoff_open` / `_today` / `_overdue` | Counts over all lists. `_today` and `_overdue` list the tasks in the `tasks` attribute |
+Open **Tickoff → Settings → Notifications** and tick where messages should go. You can pick several targets.
 
-Definitions: **open** = not done. **overdue** = the due moment has passed (earlier date, or today with a time that
-has passed; a date without a time is overdue the next day). **today** = due today and not yet overdue. Overdue and
-today never overlap.
+- **Telegram**: set up the *Telegram bot* integration in Home Assistant. Its notify entity then shows up in the list
+  with a **Telegram** badge. (Tickoff sends through `notify.send_message`, which is how Home Assistant addresses
+  notify entities.)
+- **Mobile app and other services**: every `notify.<name>` service (for example `notify.mobile_app_my_phone`) is listed.
+- Tasks **with a time** notify at that time. Tasks **with a date only** notify at the *notification time* (default 08:00).
+- Each task notifies once per due date. A task you add or snooze for *today* after the notification time does not
+  notify immediately. A recurring task notifies again at its next due date.
+- **Send test message** saves your choice and sends one test message to the chosen targets.
 
-## Sidebar panel
-
-After installing, **Tickoff** appears in the Home Assistant sidebar (for every user; you can hide it per user in your
-profile). It is the one place for everything:
-
-- **Today**: overdue and due-today tasks over all lists. **All tasks**: every list in one view.
-- **Each list**: the full task view, plus (admins) rename, delete (second click confirms) and the notify service of that list.
-- **New list**: create a list without going through Settings. Lists you create here are the same entries as in
-  *Settings → Devices & services*.
-- **Tags**: colour, rename, delete (with how many tasks use each tag) and create tags.
-- **Settings**: default notify service and notification time.
-
-Creating, renaming and deleting lists and changing settings needs an admin user; everybody can work with tasks.
-Renaming a list changes its name and friendly name; the entity id (`todo.tickoff_<original name>`) stays the same so
-your automations keep working.
+You can also choose targets in the integration's **Configure** button. For custom handling, listen for the
+`tickoff_task_due` event (or use the blueprint below).
 
 ## Dashboard card
 
-The card is loaded by the integration itself, no resource to add. Add it from the card picker (*Tickoff*) or in YAML:
+The card is loaded by the integration itself, no resource to add. Pick **Tickoff** in the card picker or use YAML:
 
 ```yaml
 type: custom:tickoff-card
-entities:
-  - todo.tickoff_groceries
-```
-
-```yaml
-# today overview over all lists
-type: custom:tickoff-card
-view: today
-title: Today
+view: today        # all | today | upcoming | done
 ```
 
 ```yaml
 type: custom:tickoff-card
-entities: [todo.tickoff_chores, todo.tickoff_garden]
-show_completed: false
+view: all
+tags: [garden]     # only tasks with this tag
 compact: true
-hide_when_empty: true
 ```
 
 | Option | Default | |
 |---|---|---|
-| `entities` | all lists | Lists to show |
-| `view` | `list` | `list` or `today` |
-| `title` | list name | Card title |
-| `show_completed` | `true` | Show completed tasks (struck through, at the bottom) |
-| `show_add` | `true` | Show the add form |
+| `view` | `all` | `all`, `today`, `upcoming` or `done` |
+| `title` | by view | Card title |
+| `tags` | all | Only tasks with one of these tags |
+| `show_completed` | `true` | Completed section in `all` |
+| `show_add` | `true` | Quick-add field |
+| `manual` | `false` | Manual order with drag & drop (also a button in the card header) |
 | `read_only` | `false` | No editing, ticking or deleting |
 | `compact` | `false` | Tighter rows |
 | `hide_when_empty` | `false` | Hide the card when there is nothing to show |
 
-In the card: tick tasks, tap a task for notes, subtasks and history, ⏰ snooze to tomorrow, ✎ edit (including
-recurrence), 🗑 delete (second tap confirms), drag the handle to reorder, tap a tag chip to filter, 🎨 to change tag
-colours. Times follow your 12/24-hour profile setting. If your dashboards are in YAML mode and the card does not show,
-reload the browser once; the integration registers the card as an extra module.
+In the card: tick a task, tap it for notes, subtasks and history, ⏰ snooze, ✎ edit sheet (due date shortcuts,
+priority, tags, recurrence), 🗑 delete (second tap confirms), tap a tag chip to filter, 🎨 for tag colours. Times follow
+your 12/24-hour profile setting.
+
+## Entities
+
+| Entity | What |
+|---|---|
+| `todo.tickoff` | All tasks: title, notes, due date/time, status, order. Ticking a recurring task rolls it over |
+| `sensor.tickoff_open` / `_today` / `_overdue` | Counts. `_today` and `_overdue` list the tasks in the `tasks` attribute |
+
+**overdue** = the due moment has passed (earlier date, or today with a time that has passed; a date without a time
+is overdue the next day). **today** = due today and not yet overdue. They never overlap.
 
 ## Services
 
-Task services target one or more Tickoff `todo` entities; tag services are global.
+Task services target `todo.tickoff`; tag services are global.
 
 ```yaml
 action: tickoff.add_task
 target:
-  entity_id: todo.tickoff_groceries
+  entity_id: todo.tickoff
 data:
   title: Pay the bill
   due_date: "2026-12-01"
@@ -151,7 +142,7 @@ data:
   tags: [money]
   recurrence: {type: monthly}
   subtasks: [Check the amount]
-response_variable: result          # result["todo.tickoff_groceries"]["task"]["id"]
+response_variable: result          # result["todo.tickoff"]["task"]["id"]
 ```
 
 | Service | Purpose |
@@ -161,12 +152,10 @@ response_variable: result          # result["todo.tickoff_groceries"]["task"]["i
 | `complete_task`, `reopen_task`, `delete_task` | By `task_id`. Completing a recurring task rolls it over |
 | `snooze_task` | Due date → tomorrow (time kept) |
 | `move_task` | `task_id` after `previous_task_id` (omit it to move to the top) |
-| `delete_completed` | Remove all done tasks of the list; returns the count |
+| `delete_completed` | Remove all done tasks; returns the count |
 | `add_subtask`, `update_subtask`, `remove_subtask` | Subtasks by `subtask_id` |
 | `get_tasks` | Tasks with all fields; optional `status` (`open`/`done`) and `tag` filter |
 | `set_tag`, `rename_tag`, `delete_tag`, `get_tags` | Global tag register (`color: "#rrggbb"`) |
-
-Recurrence:
 
 ```yaml
 recurrence: {type: daily}                              # also: interval: 2
@@ -175,9 +164,6 @@ recurrence: {type: monthly}                            # same day of the month, 
 recurrence: {type: yearly}
 recurrence: {type: after_completion, days: 10}         # 10 days after you tick it off
 ```
-
-Fixed schedules go to the first occurrence after `max(due date, today)`: ticking off late does not create a backlog,
-ticking off early still moves on to the next occurrence.
 
 ## Events
 
@@ -189,32 +175,32 @@ ticking off early still moves on to the next occurrence.
 | `tickoff_task_snoozed` | A task was snoozed |
 | `tickoff_task_due` | A task reached its due moment (once per task per due date) |
 
-Data: `entry_id`, `list_name`, `task_id`, `title`, `due_date`, `due_time`, `priority`, `tags`.
+Data: `entry_id`, `task_id`, `title`, `due_date`, `due_time`, `priority`, `tags`.
 
 ## Blueprint
 
 [![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fr3mcos3%2Ftickoff%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ftickoff%2Fdue_notification.yaml)
 
-*Tickoff - notify when a task is due*: reacts to `tickoff_task_due`, with optional list and minimum-priority filter.
-Use it instead of (or next to) the built-in notify option when you want your own target or conditions.
+*Tickoff - notify when a task is due*: reacts to `tickoff_task_due` with an optional minimum-priority filter, for your own
+message or target.
 
 ## Data and backups
 
-`.storage/tickoff.<entry_id>` holds the tasks of a list and `.storage/tickoff.tags` the tags, so both are in normal
-Home Assistant backups. Removing a list deletes its tasks; tags stay in the global register.
+`.storage/tickoff.<entry_id>` holds the tasks and `.storage/tickoff.tags` the tags; both are in normal Home Assistant backups.
 
 ## Testing and development
 
-See [`docs/testen.md`](docs/testen.md) for the manual test checklist (Dutch) and what has and has not been verified.
+See [`docs/testen.md`](docs/testen.md) (Dutch) for the manual checklist and what has and has not been verified.
 
 ```bash
 uv venv --python 3.14 .venv
 uv pip install --python .venv/bin/python -r requirements_test.txt
-.venv/bin/python -m pytest -q        # backend + card (card tests need Chrome/Chromium)
+.venv/bin/python -m pytest -q        # backend + UI (UI tests need Chrome/Chromium)
 .venv/bin/ruff check .
 ```
 
-Design and comparison with other projects: [`docs/ontwerp.md`](docs/ontwerp.md), [`docs/vergelijking.md`](docs/vergelijking.md).
+`tests/frontend/visual.html` and `visual_panel.html` render the card and panel with sample data for screenshots.
+Design notes: [`docs/ontwerp.md`](docs/ontwerp.md); comparison with other projects: [`docs/vergelijking.md`](docs/vergelijking.md).
 
 ## License
 

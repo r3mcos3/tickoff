@@ -6,121 +6,69 @@
     const ws = [], svc = [];
     const pushers = [];
     let unsub = 0;
-    let wsFail = null;
-    const mkHass = (admin, lang) => ({
-      language: lang, locale: { language: lang, time_format: "24" },
-      user: { is_admin: admin },
-      states: { "todo.tickoff_groceries": {} },
-      callService: (d, s, data, target) => { svc.push({ d, s, data, target }); return Promise.resolve(); },
-      callWS: (msg) => {
-        ws.push(msg);
-        if (wsFail) { const e = wsFail; wsFail = null; return Promise.reject(e); }
-        return Promise.resolve(msg.type === "tickoff/list_create" ? { entry_id: "e9" } : {});
-      },
-      connection: { subscribeMessage: async (cb) => { pushers.push(cb); setTimeout(() => cb(snap), 0); return () => { unsub++; }; } }, // like the server: push right after subscribing
-    });
+    let testResult = { sent: 2, targets: 2 };
     const T = (id, title, o = {}) => ({ id, title, notes: "", due_date: null, due_time: null, priority: 0, tags: [], subtasks: [],
       recurrence: null, status: "open", completed_at: null, history: [], state: "no_date", ...o });
     const snap = {
-      now: "2026-03-10T09:00:00+00:00",
+      now: "2026-03-10T09:00:00+01:00", entity_id: "todo.tickoff",
       tags: { garden: { color: "#2e7d32" }, home: { color: "#ffee58" }, unused: { color: "#123456" } },
-      settings: { notify_service: "family", notify_time: "07:30:00" },
-      notify_services: ["family", "mine"],
-      lists: [
-        { entry_id: "e1", entity_id: "todo.tickoff_groceries", name: "Groceries", notify_service: "mine", tasks: [
-          T("a", "Mow", { tags: ["garden"], due_date: "2026-03-09", state: "overdue" }),
-          T("b", "Milk", { tags: ["home"], due_date: "2026-03-10", state: "today" }),
-          T("c", "Later", { due_date: "2026-04-01", state: "upcoming" }),
-          T("d", "Done", { status: "done" }),
-        ] },
-        { entry_id: "e2", entity_id: "todo.tickoff_chores", name: "Chores", notify_service: "", tasks: [
-          T("x", "Vacuum", { tags: ["home"], due_date: "2026-03-10", state: "today" }),
-        ] },
+      settings: { notify_targets: ["entity:notify.telegram_remco"], notify_time: "07:30:00" },
+      notify_targets: [
+        { value: "entity:notify.telegram_remco", label: "Telegram · Home Assistant Remco", telegram: true },
+        { value: "service:mobile_app_phone", label: "notify.mobile_app_phone", telegram: false },
+        { value: "service:gone", label: "service:gone (unavailable)", telegram: false },
+      ],
+      tasks: [
+        T("a", "Mow", { tags: ["garden"], due_date: "2026-03-09", state: "overdue" }),
+        T("b", "Milk", { tags: ["home"], due_date: "2026-03-10", state: "today" }),
+        T("c", "Later", { due_date: "2026-04-01", state: "upcoming" }),
+        T("x", "Vacuum", { tags: ["home"], state: "no_date" }),
+        T("d", "Done", { status: "done", state: null }),
       ],
     };
+    const mkHass = (admin, lang) => ({
+      language: lang, locale: { language: lang, time_format: "24" }, user: { is_admin: admin },
+      callService: (d, s, data, target) => { svc.push({ d, s, data, target }); return Promise.resolve(); },
+      callWS: (msg) => { ws.push(msg); return Promise.resolve(msg.type === "tickoff/test_notify" ? testResult : {}); },
+      connection: { subscribeMessage: async (cb) => { pushers.push(cb); setTimeout(() => cb(snap), 0); return () => { unsub++; }; } },
+    });
     const pushAll = () => pushers.forEach((p) => p(snap));
 
-    const hass = mkHass(true, "en");
     const panel = document.createElement("tickoff-panel");
     document.body.appendChild(panel);
-    panel.hass = hass; panel.narrow = false; panel.route = {}; panel.panel = {};
-    await tick();
-    pushAll(); await tick();
+    panel.hass = mkHass(true, "en"); panel.narrow = false; panel.route = {}; panel.panel = {};
+    await tick(); await tick(); await tick();
     const sr = panel.shadowRoot;
-    const click = (sel) => { const el = sr.querySelector(sel); if (!el) throw new Error("missing " + sel); el.click(); };
-    await tick(); await tick();
-    const text = (sel) => sr.querySelector(sel).textContent.trim();
+    const click = (sel, root = sr) => { const el = root.querySelector(sel); if (!el) throw new Error("missing " + sel); el.click(); };
     const nav = () => [...sr.querySelectorAll("nav .item")].map((i) => i.textContent.trim().replace(/\s+/g, " "));
+    const cardRows = () => [...sr.querySelector("tickoff-card").shadowRoot.querySelectorAll("#list .task .title")].map((x) => x.textContent.trim());
 
     R.nav = nav();
-    R.nav_has_everything = ["Today", "All tasks", "Groceries", "Chores", "New list", "Tags", "Settings"].every((x) => R.nav.some((n) => n.includes(x)));
-    R.today_count = R.nav.some((n) => n.startsWith("\u{1F4C5} Today 3") || /Today\s*3/.test(n));
-    R.overdue_badge_red = !!sr.querySelector('nav .item[data-view="today"] .n.bad');
+    R.nav_everything = ["Today2", "Upcoming1", "All tasks4", "Completed1", "garden1", "home2", "unused", "Manage tags", "Settings"].every((x) => R.nav.some((n) => n.includes(x)));
+    R.no_lists_anywhere = !R.nav.some((n) => /list/i.test(n)) && !sr.querySelector('[data-act="newlist"]');
+    R.overdue_badge = !!sr.querySelector('nav .item[data-view="today"] .n.bad');
     R.today_active = sr.querySelector('nav .item[data-view="today"]').classList.contains("active");
     let card = sr.querySelector("tickoff-card");
-    R.card_in_today = !!card && card.shadowRoot.querySelector("h2").textContent === "Today";
-    R.card_shows_today_rows = card.shadowRoot.querySelectorAll("#list .row[data-task]").length === 3;
+    R.today_card = !!card && card.shadowRoot.querySelector("h2").textContent === "Today" && cardRows().join(",") === "Mow,Milk";
 
-    // switch to a list
-    click('nav .item[data-view="list:e1"]');
-    await tick();
+    click('nav [data-view="upcoming"]'); await tick(); await tick();
+    R.upcoming_card = sr.querySelector("tickoff-card").shadowRoot.querySelector("h2").textContent === "Upcoming" && cardRows().join(",") === "Later";
+    click('nav [data-view="all"]'); await tick(); await tick();
+    R.all_card = cardRows().length === 4;
+    click('nav [data-view="done"]'); await tick(); await tick();
+    R.done_card = cardRows().join(",") === "Done";
+    click('nav [data-view="tag:home"]'); await tick(); await tick();
     card = sr.querySelector("tickoff-card");
-    R.list_card = !!card && card.shadowRoot.querySelector("h2").textContent === "Groceries" && card.shadowRoot.querySelectorAll("#list .row[data-task]").length === 4;
-    R.list_notify_select = sr.getElementById("listnotify").value === "mine";
-    R.list_tools = !!sr.querySelector('[data-act="rename"]') && !!sr.querySelector('[data-act="deletelist"]');
+    R.tag_card = card.shadowRoot.querySelector("h2").textContent === "home" && cardRows().sort().join(",") === "Milk,Vacuum";
 
-    // card state survives a snapshot push
-    card.shadowRoot.querySelector('#chips .chip[data-tag="garden"]').click();
+    // the embedded card survives a snapshot push (filters stay)
+    card.shadowRoot.querySelector('#chips .chip[data-tag="home"]').click();
     pushAll(); await tick();
-    R.card_instance_kept = sr.querySelector("tickoff-card") === card && card.shadowRoot.querySelectorAll("#list .row[data-task]").length === 1;
+    R.card_instance_kept = sr.querySelector("tickoff-card") === card && card.shadowRoot.querySelector('#chips .chip.on') !== null;
 
-    // change notify service
-    const sel = sr.getElementById("listnotify");
-    sel.value = "family"; sel.dispatchEvent(new Event("change", { bubbles: true }));
-    R.notify_ws = JSON.stringify(ws.at(-1)) === '{"type":"tickoff/list_update","entry_id":"e1","notify_service":"family"}';
-    sel.value = ""; sel.dispatchEvent(new Event("change", { bubbles: true }));
-    R.notify_clear_ws = ws.at(-1).notify_service === null;
-
-    // rename
-    click('[data-act="rename"]');
-    R.rename_input = sr.getElementById("renameinput").value === "Groceries";
-    sr.getElementById("renameinput").value = "Shop";
-    click('[data-act="renamesave"]'); await tick();
-    R.rename_ws = JSON.stringify(ws.at(-1)) === '{"type":"tickoff/list_update","entry_id":"e1","name":"Shop"}';
-    R.rename_closed = !sr.getElementById("renameinput");
-
-    // delete: first click only asks, second deletes and goes to today
-    const wsBefore = ws.length;
-    click('[data-act="deletelist"]');
-    R.delete_asks = ws.length === wsBefore && sr.querySelector('[data-act="deletelist"]').textContent.includes("Sure");
-    click('[data-act="deletelist"]'); await tick();
-    R.delete_ws = ws.at(-1).type === "tickoff/list_delete" && ws.at(-1).entry_id === "e1";
-    R.back_to_today = sr.querySelector('nav .item[data-view="today"]').classList.contains("active");
-
-    // new list
-    click('nav [data-act="newlist"]');
-    R.create_form = !!sr.getElementById("newname") && sr.getElementById("newnotify").options.length === 3;
-    sr.getElementById("newname").value = "Garden";
-    sr.getElementById("newnotify").value = "family";
-    click('[data-act="create"]'); await tick(); await tick();
-    R.create_ws = JSON.stringify(ws.at(-1)) === '{"type":"tickoff/list_create","name":"Garden","notify_service":"family"}';
-    click('nav [data-act="newlist"]');
-    click('[data-act="create"]'); // empty name: nothing sent
-    R.blank_name_ignored = ws.at(-1).type === "tickoff/list_create" && ws.filter((w) => w.type === "tickoff/list_create").length === 1;
-    click('[data-act="cancel"]');
-
-    // server error shown
-    click('nav [data-act="newlist"]');
-    sr.getElementById("newname").value = "Chores";
-    wsFail = new Error("A list with this name already exists");
-    click('[data-act="create"]'); await tick(); await tick();
-    R.error_shown = sr.querySelector(".err") && sr.querySelector(".err").textContent.includes("already exists");
-    click('[data-act="cancel"]');
-
-    // tags view
-    click('nav .item[data-view="tags"]');
-    R.tag_rows = sr.querySelectorAll("#body .row[data-tag]").length === 3;
-    R.tag_counts = sr.getElementById("body").textContent.includes("home") && sr.getElementById("body").textContent.includes("(2 tasks)");
+    // manage tags
+    click('nav [data-view="tags"]');
+    R.tag_rows = sr.querySelectorAll("#body .row[data-tag]").length === 3 && sr.getElementById("body").textContent.includes("(2 tasks)");
     const color = sr.querySelector('.row[data-tag="garden"] input[type=color]');
     color.value = "#112233"; color.dispatchEvent(new Event("change", { bubbles: true }));
     R.tag_color = JSON.stringify(svc.at(-1)) === '{"d":"tickoff","s":"set_tag","data":{"name":"garden","color":"#112233"}}';
@@ -137,43 +85,61 @@
     click('[data-act="tagadd"]'); await tick();
     R.tag_add = svc.at(-1).s === "set_tag" && svc.at(-1).data.name === "work" && svc.at(-1).data.color === "#abcdef";
 
-    // settings view
-    click('nav .item[data-view="settings"]');
-    R.settings_values = sr.getElementById("setnotify").value === "family" && sr.getElementById("settime").value === "07:30";
-    sr.getElementById("setnotify").value = "mine"; sr.getElementById("settime").value = "09:05";
-    click('[data-act="savesettings"]'); await tick();
-    R.settings_ws = JSON.stringify(ws.at(-1)) === '{"type":"tickoff/settings_set","notify_service":"mine","notify_time":"09:05:00"}';
-    R.saved_flash = !!sr.querySelector(".ok");
+    // settings: notification targets with Telegram on top
+    click('nav [data-view="settings"]');
+    const targets = [...sr.querySelectorAll(".target")];
+    R.targets_listed = targets.length === 3;
+    R.telegram_first = targets[0].textContent.includes("Home Assistant Remco") && !!targets[0].querySelector(".badge") && targets[0].querySelector(".badge").textContent === "Telegram";
+    R.telegram_label_clean = !targets[0].textContent.includes("Telegram ·");
+    R.telegram_checked = targets[0].querySelector("input").checked && targets[0].classList.contains("on") && !targets[1].querySelector("input").checked;
+    R.kinds = targets[0].textContent.includes("Notify entity") && targets[1].textContent.includes("Notify service");
+    R.time_value = sr.getElementById("settime").value === "07:30";
+    R.test_enabled = sr.querySelector('[data-act="testnotify"]').disabled === false;
+    // pick the phone too, drop nothing
+    const phone = targets[1].querySelector("input");
+    phone.checked = true; phone.dispatchEvent(new Event("change", { bubbles: true }));
+    R.target_toggle_on = targets[1].classList.contains("on");
+    sr.getElementById("settime").value = "09:05";
+    click('[data-act="savesettings"]'); await tick(); await tick();
+    R.settings_ws = JSON.stringify(ws.at(-1)) === '{"type":"tickoff/settings_set","notify_targets":["entity:notify.telegram_remco","service:mobile_app_phone"],"notify_time":"09:05:00"}';
+    R.saved_flash = !!sr.querySelector(".ok") && sr.querySelector(".ok").textContent === "Saved";
+    // unselect everything: test button disables
+    sr.querySelectorAll(".target input").forEach((b) => { b.checked = false; b.dispatchEvent(new Event("change", { bubbles: true })); });
+    R.test_disabled_when_none = sr.querySelector('[data-act="testnotify"]').disabled === true;
+    // test message: saves first, then tests
+    sr.querySelector(".target input").checked = true; sr.querySelector(".target input").dispatchEvent(new Event("change", { bubbles: true }));
+    const w0 = ws.length;
+    click('[data-act="testnotify"]'); await tick(); await tick(); await tick();
+    R.test_flow = ws.length === w0 + 2 && ws.at(-2).type === "tickoff/settings_set" && ws.at(-2).notify_targets.length === 1 && ws.at(-1).type === "tickoff/test_notify";
+    R.test_flash = sr.querySelector(".ok") && sr.querySelector(".ok").textContent.includes("2 target");
 
-    // all tasks view
-    click('nav .item[data-view="all"]');
-    await tick(); await tick();
-    card = sr.querySelector("tickoff-card");
-    R.all_view = card.shadowRoot.querySelector("h2").textContent === "All tasks" && card.shadowRoot.querySelectorAll("#list .row[data-task]").length === 5;
+    // no targets: helpful hint
+    const snapNone = { ...snap, notify_targets: [], settings: { notify_targets: [], notify_time: "08:00:00" } };
+    pushers.forEach((p) => p(snapNone)); await tick();
+    R.no_targets_hint = sr.getElementById("body").textContent.includes("Telegram bot integration");
+    pushAll();
 
-    // non-admin: no management
+    // non-admin
     const p2 = document.createElement("tickoff-panel");
     document.body.appendChild(p2);
-    p2.hass = mkHass(false, "en"); await tick(); pushAll(); await tick();
+    p2.hass = mkHass(false, "en"); await tick(); await tick();
+    p2.shadowRoot.querySelector('nav [data-view="settings"]').click();
     const sr2 = p2.shadowRoot;
-    R.user_no_newlist = !sr2.querySelector('[data-act="newlist"]');
-    sr2.querySelector('nav .item[data-view="list:e2"]').click(); await tick();
-    R.user_no_list_tools = !sr2.querySelector('[data-act="rename"]') && !sr2.getElementById("listnotify");
-    sr2.querySelector('nav .item[data-view="settings"]').click();
-    R.user_settings_readonly = !sr2.getElementById("setnotify") && !sr2.querySelector('[data-act="savesettings"]');
+    R.user_settings_readonly = !sr2.querySelector('[data-act="savesettings"]') && !sr2.querySelector('[data-act="testnotify"]')
+      && [...sr2.querySelectorAll(".target input")].every((i) => i.disabled) && sr2.getElementById("settime").disabled;
     p2.remove();
 
-    // narrow layout: nav hidden until the menu button is used
+    // narrow: nav hidden until the menu button is used; wide: the button toggles the HA sidebar
     const p3 = document.createElement("tickoff-panel");
     document.body.appendChild(p3);
-    p3.narrow = true; p3.hass = mkHass(true, "en"); await tick(); pushAll(); await tick();
+    p3.narrow = true; p3.hass = mkHass(true, "en"); await tick(); await tick();
     const nav3 = p3.shadowRoot.getElementById("nav");
     R.narrow_hidden = p3.shadowRoot.querySelector(".layout").classList.contains("narrow") && !nav3.classList.contains("open");
     p3.shadowRoot.getElementById("menu").click();
     R.narrow_open = nav3.classList.contains("open");
     nav3.querySelector('[data-view="tags"]').click();
-    R.narrow_closes_after_pick = !nav3.classList.contains("open");
-    // wide: menu button toggles the HA sidebar
+    R.narrow_closes = !nav3.classList.contains("open");
+    p3.remove();
     let toggled = false;
     const p4 = document.createElement("tickoff-panel");
     document.body.appendChild(p4);
@@ -186,9 +152,9 @@
     // dutch
     const p5 = document.createElement("tickoff-panel");
     document.body.appendChild(p5);
-    p5.hass = mkHass(true, "nl"); await tick(); pushAll(); await tick();
-    R.dutch = p5.shadowRoot.getElementById("nav").textContent.includes("Alle taken") && p5.shadowRoot.getElementById("nav").textContent.includes("Nieuwe lijst");
-    p5.remove(); p3.remove();
+    p5.hass = mkHass(true, "nl"); await tick(); await tick();
+    R.dutch = p5.shadowRoot.getElementById("nav").textContent.includes("Alle taken") && p5.shadowRoot.getElementById("nav").textContent.includes("Tags beheren");
+    p5.remove();
 
     panel.remove();
     R.unsubscribed = unsub >= 1;
