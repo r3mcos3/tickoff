@@ -16,7 +16,7 @@ item to the sidebar** (today, upcoming, all, completed, per tag), a **dashboard 
 
 - **Just tasks, no lists.** One collection; organise with tags and smart views.
 - **Quick add**: type `Call mom tomorrow 14:30 #family !high` and Tickoff understands the date, time, tag and priority
-  (also Dutch: `morgen`, `vrijdag`, `over 3 dagen`, `!hoog`, `elke week`). A preview shows what it understood.
+  (also Dutch: `morgen`, `vrijdag`, `over 3 dagen`, `!hoog`, `elke week`, or a date such as `15-03`). A preview shows what it understood.
 - **Smart views**: Today (overdue + today), Upcoming (per day), All tasks (grouped: overdue, today, upcoming, no date,
   completed), Completed, and one view per tag. Optional manual order with drag & drop.
 - **Tasks**: title, notes, due date with optional time, priority, tags with colours (one global register), subtasks
@@ -26,7 +26,7 @@ item to the sidebar** (today, upcoming, all, completed, per tag), a **dashboard 
 - **Notifications** on the due date, **once per task**, also across restarts: choose one or more targets (**Telegram**,
   mobile app, any notify service or entity), a test button included.
 - **Sensors**: `sensor.tickoff_open`, `sensor.tickoff_today`, `sensor.tickoff_overdue`, plus events and services for automations.
-- English and Dutch.
+- English and Dutch. Times are always 24-hour (`hh:mm`) and dates `dd-mm-yyyy`, whatever your browser's language is.
 
 ## Installation
 

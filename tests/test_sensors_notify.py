@@ -347,3 +347,26 @@ async def test_migration_of_only_an_overview_entry(hass):
     (only,) = hass.config_entries.async_entries(DOMAIN)
     assert only.data == {"kind": "main"} and only.options == {"notify_targets": ["service:family"]}
     assert hass.states.get("todo.tickoff") is not None
+
+
+async def test_saving_settings_pushes_the_saved_values_to_open_panels(hass, hass_ws_client, setup_entry):
+    """Regression: after Save the panel showed the old values because no update was pushed."""
+    async_mock_service(hass, "notify", "phone")
+    client = await hass_ws_client(hass)
+    await client.send_json({"id": 1, "type": "tickoff/subscribe"})
+    assert (await client.receive_json())["success"]
+    first = await client.receive_json()
+    assert first["event"]["settings"] == {"notify_targets": [], "notify_time": "08:00:00"}
+    await client.send_json({"id": 2, "type": "tickoff/settings_set",
+                            "notify_targets": ["service:phone"], "notify_time": "18:45:00"})
+    pushed = None
+    seen_result = False
+    while pushed is None or not seen_result:  # the event and the result may arrive in either order
+        msg = await client.receive_json()
+        if msg["type"] == "event":
+            pushed = msg["event"]
+        else:
+            seen_result = msg["id"] == 2 and msg["success"]
+    assert pushed is not None
+    assert pushed["settings"] == {"notify_targets": ["service:phone"], "notify_time": "18:45:00"}
+    assert hass.config_entries.async_entries(DOMAIN)[0].options["notify_time"] == "18:45:00"

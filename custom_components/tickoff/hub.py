@@ -83,6 +83,11 @@ class Hub:
         return _remove
 
     @callback
+    def async_refresh_views(self) -> None:
+        """Push a fresh snapshot to everything that listens (panel, card, sensors)."""
+        self._notify_listeners()
+
+    @callback
     def _notify_listeners(self) -> None:
         for listener in list(self._listeners):
             listener()

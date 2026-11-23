@@ -93,7 +93,7 @@
     R.telegram_label_clean = !targets[0].textContent.includes("Telegram ·");
     R.telegram_checked = targets[0].querySelector("input").checked && targets[0].classList.contains("on") && !targets[1].querySelector("input").checked;
     R.kinds = targets[0].textContent.includes("Notify entity") && targets[1].textContent.includes("Notify service");
-    R.time_value = sr.getElementById("settime").value === "07:30";
+    R.time_value = sr.getElementById("settime").value === "07:30" && sr.getElementById("settime").type === "text" && sr.getElementById("settime").placeholder === "hh:mm";
     R.test_enabled = sr.querySelector('[data-act="testnotify"]').disabled === false;
     // pick the phone too, drop nothing
     const phone = targets[1].querySelector("input");
@@ -102,7 +102,22 @@
     sr.getElementById("settime").value = "09:05";
     click('[data-act="savesettings"]'); await tick(); await tick();
     R.settings_ws = JSON.stringify(ws.at(-1)) === '{"type":"tickoff/settings_set","notify_targets":["entity:notify.telegram_remco","service:mobile_app_phone"],"notify_time":"09:05:00"}';
+    R.values_persist_after_save = sr.getElementById("settime").value === "09:05" && sr.querySelectorAll(".target input:checked").length === 2
+      && sr.querySelectorAll(".target.on").length === 2;
     R.saved_flash = !!sr.querySelector(".ok") && sr.querySelector(".ok").textContent === "Saved";
+    // typing: mask and 24-hour validation
+    sr.getElementById("settime").value = "1830"; sr.getElementById("settime").dispatchEvent(new Event("input", { bubbles: true }));
+    R.time_mask = sr.getElementById("settime").value === "18:30";
+    sr.getElementById("settime").value = "25:61";
+    const wBad = ws.length;
+    click('[data-act="savesettings"]'); await tick(); await tick();
+    R.invalid_time_not_saved = ws.length === wBad && sr.querySelector(".err") && sr.querySelector(".err").textContent.includes("24-hour");
+    sr.getElementById("settime").value = "09:05";
+    click('[data-act="savesettings"]'); await tick(); await tick();
+    // the server later pushes the same values: nothing flips back
+    snap.settings = { notify_targets: ["entity:notify.telegram_remco", "service:mobile_app_phone"], notify_time: "09:05:00" };
+    pushAll(); await tick();
+    R.server_push_keeps_values = sr.getElementById("settime").value === "09:05" && sr.querySelectorAll(".target input:checked").length === 2;
     // unselect everything: test button disables
     sr.querySelectorAll(".target input").forEach((b) => { b.checked = false; b.dispatchEvent(new Event("change", { bubbles: true })); });
     R.test_disabled_when_none = sr.querySelector('[data-act="testnotify"]').disabled === true;

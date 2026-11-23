@@ -112,10 +112,10 @@
     const sheet = () => sr.querySelector(".sheet");
     R.sheet_open = !!sheet() && sr.querySelector(".overlay") !== null;
     const f = (n) => sheet().querySelector(`[data-f="${n}"]`);
-    R.sheet_prefilled = f("title").value === "Call plumber" && f("due_date").value === "2026-03-20" && f("priority").dataset.v === "1";
+    R.sheet_prefilled = f("title").value === "Call plumber" && f("due_date").value === "20-03-2026" && f("due_time").value === "" && f("priority").dataset.v === "1";
     f("title").value = "Call the plumber";
     click('[data-act="qdate"][data-d="2026-03-11"]');
-    R.quick_date = f("due_date").value === "2026-03-11";
+    R.quick_date = f("due_date").value === "11-03-2026";
     f("due_time").value = "09:15";
     click('[data-act="prio"][data-v="3"]');
     R.prio_seg = f("priority").dataset.v === "3" && sheet().querySelector('[data-act="prio"][data-v="3"]').classList.contains("on");
@@ -152,6 +152,41 @@
     click('[data-act="sheetdelete"]');
     R.sheet_delete = calls.at(-1).s === "delete_task" && calls.at(-1).data.task_id === "c" && !sheet();
 
+    // ---- 24-hour time and dd-mm-yyyy, independent of the browser locale ----
+    click('.task[data-task="c"] [data-act="edit"]');
+    R.no_native_pickers_visible = ![...sr.querySelectorAll('input[type="time"]')].length && [...sr.querySelectorAll('input[type="date"]')].every((i) => i.classList.contains("pickhidden"));
+    R.date_placeholder = f("due_date").placeholder === "dd-mm-yyyy" && f("due_time").placeholder === "hh:mm";
+    f("due_date").value = "1"; f("due_date").dispatchEvent(new Event("input", { bubbles: true }));
+    f("due_date").value = "12032026"; f("due_date").dispatchEvent(new Event("input", { bubbles: true }));
+    R.date_mask = f("due_date").value === "12-03-2026";
+    f("due_time").value = "1730"; f("due_time").dispatchEvent(new Event("input", { bubbles: true }));
+    R.time_mask = f("due_time").value === "17:30";
+    f("due_time").value = "25:99";
+    const before = calls.length;
+    click('[data-act="save"]');
+    R.invalid_time_blocks_save = calls.length === before && !!sheet() && f("due_time").classList.contains("bad");
+    f("due_time").value = "08:05"; f("due_date").value = "31-02-2026";
+    click('[data-act="save"]');
+    R.invalid_date_blocks_save = calls.length === before && f("due_date").classList.contains("bad");
+    f("due_date").value = "12/3/26"; f("due_time").value = "9.05";
+    click('[data-act="save"]');
+    R.lenient_input_saved = calls.at(-1).data.due_date === "2026-03-12" && calls.at(-1).data.due_time === "09:05:00";
+    click('.task[data-task="c"] [data-act="edit"]');
+    // calendar button: the hidden native picker writes dd-mm-yyyy into the text field
+    const hidden = sheet().querySelector(".pickhidden");
+    hidden.value = "2026-07-04"; hidden.dispatchEvent(new Event("change", { bubbles: true }));
+    R.picker_fills_text = f("due_date").value === "04-07-2026";
+    click('[data-act="cancel"]');
+    R.fmt_helpers = window.__tickoff.fmtDate("2026-03-05") === "05-03-2026" && window.__tickoff.parseDateText("05-03-2026") === "2026-03-05" && window.__tickoff.parseDateText("2026-03-05") === "2026-03-05"
+      && window.__tickoff.parseDateText("") === "" && window.__tickoff.parseDateText("13-13-2026") === null && window.__tickoff.parseDateText("29-02-2027") === null && window.__tickoff.parseDateText("29-02-2028") === "2028-02-29"
+      && window.__tickoff.parseTimeText("7:05") === "07:05" && window.__tickoff.parseTimeText("0705") === "07:05" && window.__tickoff.parseTimeText("24:00") === null && window.__tickoff.parseTimeText("") === "";
+    R.far_date_format = sr.getElementById("list").textContent.includes("Fri 20-03-2026") || sr.getElementById("list").textContent.includes("20-03-2026");
+    R.no_am_pm = !/\b(AM|PM)\b/i.test(sr.getElementById("list").textContent);
+    // a browser/profile set to 12-hour must not change anything
+    hass.locale = { language: "en", time_format: "12" }; card.hass = hass; push(snap);
+    R.time_24h_even_with_12h_profile = sr.querySelector(".due.warn").textContent.includes("17:30") && !/\b(AM|PM)\b/i.test(sr.querySelector(".due.warn").textContent);
+    hass.locale = { language: "en", time_format: "24" }; card.hass = hass;
+
     // ---- quick add ----
     const add = (id) => sr.getElementById(id);
     R.add_disabled_when_empty = add("addbtn").disabled === true;
@@ -167,13 +202,17 @@
     add("addtitle").value = "Pay rent monthly"; add("addtitle").dispatchEvent(new Event("input")); add("adddate").value = "2026-04-01";
     add("addtitle").dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
     R.add_enter_recurrence = calls.at(-1).data.recurrence.type === "monthly" && calls.at(-1).data.due_date === "2026-04-01";
+    add("addtitle").value = "Bad date"; add("addtitle").dispatchEvent(new Event("input")); add("adddate").value = "99-99-2026";
+    const nBad = calls.length; add("addbtn").click();
+    R.add_invalid_date_blocked = calls.length === nBad && add("adddate").classList.contains("bad") && add("addtitle").value === "Bad date";
+    add("adddate").value = ""; add("adddate").classList.remove("bad");
     add("addtitle").value = "   "; add("addtitle").dispatchEvent(new Event("input")); add("addbtn").click();
     R.blank_ignored = calls.at(-1).data.title === "Pay rent";
     add("addmore").click();
     R.options_toggle = sr.getElementById("addextra").classList.contains("open");
-    add("addtitle").value = "With options"; add("addprio").value = "2"; add("addrec").value = "weekly"; add("adddate").value = "2026-03-12";
+    add("addtitle").value = "With options"; add("addprio").value = "2"; add("addrec").value = "weekly"; add("adddate").value = "12-03-2026"; add("addtime").value = "7:30";
     add("addbtn").disabled = false; add("addbtn").click();
-    R.add_options = calls.at(-1).data.priority === 2 && JSON.stringify(calls.at(-1).data.recurrence) === '{"type":"weekly","interval":1,"weekdays":[3]}';
+    R.add_options = calls.at(-1).data.due_time === "07:30:00" && calls.at(-1).data.due_date === "2026-03-12" && calls.at(-1).data.priority === 2 && JSON.stringify(calls.at(-1).data.recurrence) === '{"type":"weekly","interval":1,"weekdays":[3]}';
 
     // ---- parser ----
     const P = (s) => window.__tickoff.parseQuickAdd(s, "2026-03-10");
@@ -188,6 +227,7 @@
     R.parse_priority_forms = P("a !1").priority === 1 && P("a !med").priority === 2 && P("a !3").priority === 3 && P("a !laag").priority === 1;
     R.parse_tags_dedupe = JSON.stringify(P("a #x #y #x").tags) === '["x","y"]';
     R.parse_only_keywords_keeps_text = P("tomorrow").title === "tomorrow" && P("tomorrow").due_date === null;
+    R.parse_dd_mm = P("Pay 15-03").due_date === "2026-03-15" && P("Pay 15-03").title === "Pay" && P("Pay 1/4/2027").due_date === "2027-04-01" && P("Pay 05-03").due_date === "2027-03-05" && P("Pay 31-02").title === "Pay 31-02";
     R.parse_bad_time = P("Meet 25:99").title === "Meet 25:99";
     R.parse_exclamation_in_text = P("Hello! world").title === "Hello! world";
 

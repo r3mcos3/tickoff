@@ -30,7 +30,8 @@
       editor_show_done: "Show completed tasks", editor_show_add: "Show add field", editor_read_only: "Read only",
       editor_compact: "Compact", editor_hide_empty: "Hide when empty", editor_manual: "Manual order (drag & drop)",
       view_all: "All tasks", view_today: "Today", view_upcoming: "Upcoming", view_done: "Completed",
-      count_open: "open",
+      count_open: "open", date_ph: "dd-mm-yyyy", time_ph: "hh:mm", pick_date: "Pick a date",
+      invalid_date: "Use dd-mm-yyyy", invalid_time: "Use 24-hour time hh:mm",
     },
     nl: {
       add_placeholder: "Taak toevoegen...  probeer: Mama bellen morgen 14:30 #familie !hoog",
@@ -49,7 +50,8 @@
       editor_show_done: "Voltooide taken tonen", editor_show_add: "Toevoegveld tonen", editor_read_only: "Alleen lezen",
       editor_compact: "Compact", editor_hide_empty: "Verbergen als leeg", editor_manual: "Handmatige volgorde (slepen)",
       view_all: "Alle taken", view_today: "Vandaag", view_upcoming: "Binnenkort", view_done: "Voltooid",
-      count_open: "open",
+      count_open: "open", date_ph: "dd-mm-jjjj", time_ph: "uu:mm", pick_date: "Kies een datum",
+      invalid_date: "Gebruik dd-mm-jjjj", invalid_time: "Gebruik 24-uurs tijd uu:mm",
     },
   };
 
@@ -73,6 +75,48 @@
   const parseDate = (s) => new Date(`${s}T00:00:00`);
   const addDays = (s, n) => { const d = parseDate(s); d.setDate(d.getDate() + n); return isoDate(d); };
   const dayDiff = (a, b) => Math.round((parseDate(a) - parseDate(b)) / 86400000);
+
+  /** Dates are shown and typed as dd-mm-yyyy, times as 24-hour hh:mm, whatever the browser's locale is. */
+  const fmtDate = (iso) => (iso ? `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}` : "");
+  const fmtStamp = (iso) => (iso ? `${fmtDate(iso.slice(0, 10))} ${iso.slice(11, 16)}` : "");
+
+  /** "12-03-2026", "12/3/26", "12.03.2026" or "2026-03-12" -> "2026-03-12"; "" -> ""; invalid -> null. */
+  function parseDateText(text) {
+    const v = (text || "").trim();
+    if (!v) return "";
+    let y, m, d, x;
+    if ((x = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(v))) [y, m, d] = [+x[1], +x[2], +x[3]];
+    else if ((x = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2}|\d{4})$/.exec(v))) [d, m, y] = [+x[1], +x[2], x[3].length === 2 ? 2000 + +x[3] : +x[3]];
+    else return null;
+    const dt = new Date(y, m - 1, d);
+    if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) return null;
+    return `${y}-${pad(m)}-${pad(d)}`;
+  }
+
+  /** "9:05", "09:05", "0905", "9.05" -> "09:05"; "" -> ""; invalid -> null. */
+  function parseTimeText(text) {
+    const v = (text || "").trim();
+    if (!v) return "";
+    const x = /^(\d{1,2})[:.]?(\d{2})$/.exec(v);
+    if (!x || +x[1] > 23 || +x[2] > 59) return null;
+    return `${pad(+x[1])}:${x[2]}`;
+  }
+
+  const maskDate = (v) => {
+    const d = v.replace(/\D/g, "").slice(0, 8);
+    return d.length > 4 ? `${d.slice(0, 2)}-${d.slice(2, 4)}-${d.slice(4)}` : d.length > 2 ? `${d.slice(0, 2)}-${d.slice(2)}` : d;
+  };
+  const maskTime = (v) => {
+    const d = v.replace(/\D/g, "").slice(0, 4);
+    return d.length > 2 ? `${d.slice(0, 2)}:${d.slice(2)}` : d;
+  };
+
+  const dateField = (attrs, iso, t) =>
+    `<span class="dt"><input type="text" ${attrs} data-mask="date" inputmode="numeric" maxlength="10" placeholder="${esc(t.date_ph)}" value="${esc(fmtDate(iso))}">` +
+    `<button type="button" class="iconbtn" data-act="pickdate" title="${esc(t.pick_date)}"><ha-icon icon="mdi:calendar"></ha-icon></button>` +
+    `<input type="date" class="pickhidden" tabindex="-1" aria-hidden="true"></span>`;
+  const timeField = (attrs, hhmm, t) =>
+    `<input type="text" ${attrs} data-mask="time" inputmode="numeric" maxlength="5" placeholder="${esc(t.time_ph)}" value="${esc(hhmm || "")}" style="width:90px">`;
 
   const WEEKDAYS = {
     mon: 0, monday: 0, ma: 0, maandag: 0, tue: 1, tuesday: 1, di: 1, dinsdag: 1, wed: 2, wednesday: 2, wo: 2, woensdag: 2,
@@ -102,6 +146,12 @@
       else if (lw === "tomorrow" || lw === "morgen") out.due_date = addDays(today, 1);
       else if (lw === "overmorgen") out.due_date = addDays(today, 2);
       else if (/^\d{4}-\d{2}-\d{2}$/.test(lw) && !isNaN(parseDate(lw))) out.due_date = lw;
+      else if (/^\d{1,2}[-/.]\d{1,2}([-/.]\d{2,4})?$/.test(lw)) {
+        const full = /^\d{1,2}[-/.]\d{1,2}$/.test(lw) ? `${lw}-${today.slice(0, 4)}` : lw;
+        const iso = parseDateText(full);
+        if (iso) out.due_date = iso < today && full !== lw ? parseDateText(`${lw}-${+today.slice(0, 4) + 1}`) : iso;
+        else kept.push(w);
+      }
       else if (WEEKDAYS[lw] !== undefined && w.length > 2) {
         const delta = (WEEKDAYS[lw] - ((parseDate(today).getDay() + 6) % 7) + 7) % 7 || 7;
         out.due_date = addDays(today, delta);
@@ -204,7 +254,8 @@
     if (d === 1) return t.tomorrow;
     if (d === -1) return t.yesterday;
     if (d < 0 && d > -15) return `${-d} ${t.days_ago}`;
-    return parseDate(date).toLocaleDateString(lang, { weekday: "short", day: "numeric", month: "short" });
+    void lang;
+    return `${t.wd[(parseDate(date).getDay() + 6) % 7]} ${fmtDate(date)}`;
   }
 
   // ---------- styles ----------
@@ -296,7 +347,7 @@
     .sheet h3 { margin: 0; font-size: 1.15em; }
     .sheet label.f { display: flex; flex-direction: column; gap: 5px; font-size: .78em; font-weight: 600; color: var(--tk-muted); text-transform: uppercase; letter-spacing: .4px; }
     .sheet label.f > input, .sheet label.f > textarea, .sheet label.f > select { text-transform: none; font-weight: 400; font-size: 1rem; color: var(--primary-text-color); letter-spacing: 0; }
-    .row2 { display: flex; gap: 10px; } .row2 > * { flex: 1; }
+    .row2 { display: flex; gap: 10px; } .row2 > * { flex: 1; } .row2 > .dt { flex: none; } .row2 > input[data-mask=time] { flex: none; }
     .quick { display: flex; gap: 6px; flex-wrap: wrap; }
     .seg { display: flex; border: 1px solid var(--tk-line); border-radius: 10px; overflow: hidden; }
     .seg button { flex: 1; padding: 8px 4px; border-radius: 0; font-size: .9rem; text-transform: none; font-weight: 500; letter-spacing: 0; color: var(--primary-text-color); }
@@ -306,6 +357,9 @@
     .btn { padding: 9px 16px; border-radius: 10px; font-weight: 600; } .btn:hover { background: var(--secondary-background-color, #eee); }
     .btn.primary { background: var(--primary-color); color: var(--text-primary-color, #fff); } .btn.primary:hover { filter: brightness(1.08); }
     .btn.danger { color: var(--tk-bad); }
+    .dt { position: relative; display: flex; align-items: center; gap: 2px; } .dt > input[type=text] { width: 130px; }
+    .pickhidden { position: absolute; right: 0; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
+    input.bad { outline: 2px solid var(--tk-bad); outline-offset: -1px; }
     .newtag { display: inline-flex; gap: 4px; } .newtag input { width: 110px; padding: 3px 9px; border-radius: 999px; font-size: .8em; }
   `;
 
@@ -397,6 +451,9 @@
       $("foot").addEventListener("click", (e) => this._onFoot(e));
       $("headbtns").addEventListener("click", (e) => this._onHead(e));
       $("overlay").addEventListener("click", (e) => this._onSheet(e));
+      this._root.addEventListener("input", (e) => this._onMask(e));
+      this._root.addEventListener("click", (e) => this._onPick(e));
+      this._root.addEventListener("change", (e) => this._onPicked(e));
       $("overlay").addEventListener("keydown", (e) => { if (e.key === "Escape") { this._editing = null; this._update(); } });
     }
 
@@ -412,7 +469,7 @@
         <div class="preview" id="preview"></div>
         <div class="extra" id="addextra">
           <textarea id="addnotes" rows="2" placeholder="${esc(t.notes)}"></textarea>
-          <input type="date" id="adddate"><input type="time" id="addtime">
+          ${dateField('id="adddate"', "", t)}${timeField('id="addtime"', "", t)}
           <select id="addprio">${PRIO_NAMES.map((n, i) => `<option value="${i}">${esc(t.priority)}: ${esc(t[n])}</option>`).join("")}</select>
           <select id="addrec">${REC_TYPES.map((v) => `<option value="${v}">${esc(v ? t[v] : t.repeat + ": " + t.none)}</option>`).join("")}</select>
         </div>`;
@@ -445,11 +502,19 @@
       if (!text || !this._snap) return;
       const p = parseQuickAdd(text, this._today);
       const data = { title: p.title };
-      const date = $("adddate").value || p.due_date;
-      const time = $("addtime").value || p.due_time;
+      const typedDate = parseDateText($("adddate").value);
+      const typedTime = parseTimeText($("addtime").value);
+      if (typedDate === null || typedTime === null) {
+        $("adddate").classList.toggle("bad", typedDate === null);
+        $("addtime").classList.toggle("bad", typedTime === null);
+        return; // keep what was typed, show which field is wrong
+      }
+      $("adddate").classList.remove("bad"); $("addtime").classList.remove("bad");
+      const date = typedDate || p.due_date;
+      const time = typedTime || p.due_time;
       if ($("addnotes").value.trim()) data.notes = $("addnotes").value.trim();
       if (date) data.due_date = date;
-      if (date && time) data.due_time = time.length === 5 ? time + ":00" : time;
+      if (date && time) data.due_time = time + ":00";
       const prio = +$("addprio").value || p.priority;
       if (prio) data.priority = prio;
       if (p.tags.length) data.tags = p.tags;
@@ -541,13 +606,7 @@
       const t = this._t;
       const tone = task.state === "overdue" ? "bad" : task.state === "today" ? "warn" : "";
       let label = relativeDay(task.due_date, this._today, t, this._lang);
-      if (task.due_time) {
-        const fmt = this._hass && this._hass.locale && this._hass.locale.time_format; // follows the 12/24 hour profile setting
-        const opts = { hour: "2-digit", minute: "2-digit" };
-        if (fmt === "12") opts.hour12 = true;
-        else if (fmt === "24") opts.hour12 = false;
-        label += " " + new Date(`${task.due_date}T${task.due_time}`).toLocaleTimeString(this._lang, opts);
-      }
+      if (task.due_time) label += " " + task.due_time; // always 24-hour
       return `<span class="due ${tone}"><ha-icon icon="mdi:calendar-clock"></ha-icon>${esc(label)}</span>`;
     }
 
@@ -585,7 +644,7 @@
         const subHtml = subs.map((s) => `<div class="subrow ${s.done ? "done" : ""}" data-sub="${esc(s.id)}">
             <button class="check" data-act="subtoggle" ${ro ? "disabled" : ""} style="${s.done ? "background:var(--tk-muted);color:#fff" : ""}"><ha-icon icon="mdi:check"></ha-icon></button><span>${esc(s.title)}</span>
             ${ro ? "" : `<button class="iconbtn" data-act="subremove" style="width:24px;height:24px" title="${esc(t.delete)}"><ha-icon icon="mdi:close"></ha-icon></button>`}</div>`).join("");
-        const hist = (task.history || []).slice(-3).reverse().map((h) => `${esc(h.event)} ${esc((h.at || "").slice(0, 16).replace("T", " "))}`).join(" · ");
+        const hist = (task.history || []).slice(-3).reverse().map((h) => `${esc(h.event)} ${esc(fmtStamp(h.at || ""))}`).join(" · ");
         html += `<div class="detail" data-task="${esc(task.id)}">
           ${task.notes ? `<div class="notes">${esc(task.notes)}</div>` : ""}${subHtml}
           ${ro ? "" : `<input class="subadd" type="text" data-act="subadd" placeholder="${esc(t.add_subtask)}">`}
@@ -612,7 +671,7 @@
             <button class="chip filter" data-act="qdate" data-d="${addDays(today, 1)}">${esc(t.tomorrow)}</button>
             <button class="chip filter" data-act="qdate" data-d="${addDays(today, 7)}">${esc(t.next_week)}</button>
             <button class="chip filter" data-act="qdate" data-d="">${esc(t.none)}</button></div>
-          <div class="row2"><input type="date" data-f="due_date" value="${esc(task.due_date || "")}"><input type="time" data-f="due_time" value="${esc(task.due_time || "")}"></div></div>
+          <div class="row2">${dateField('data-f="due_date"', task.due_date, t)}${timeField('data-f="due_time"', task.due_time, t)}</div></div>
         <div class="f" style="display:flex;flex-direction:column;gap:6px"><span style="font-size:.78em;font-weight:600;color:var(--tk-muted);text-transform:uppercase;letter-spacing:.4px">${esc(t.priority)}</span>
           <div class="seg" data-f="priority" data-v="${task.priority}">${PRIO_NAMES.map((n, i) => `<button data-act="prio" data-v="${i}" class="${task.priority === i ? "on" : ""}">${esc(t[n])}</button>`).join("")}</div></div>
         <div class="f" style="display:flex;flex-direction:column;gap:6px"><span style="font-size:.78em;font-weight:600;color:var(--tk-muted);text-transform:uppercase;letter-spacing:.4px">${esc(t.tags)}</span>
@@ -677,7 +736,7 @@
       if (!sheet) return;
       const f = (n) => sheet.querySelector(`[data-f="${n}"]`);
       const task = this._snap.tasks.find((x) => x.id === sheet.dataset.task);
-      if (act === "qdate") { f("due_date").value = btn.dataset.d; if (!btn.dataset.d) f("due_time").value = ""; }
+      if (act === "qdate") { f("due_date").value = fmtDate(btn.dataset.d); f("due_date").classList.remove("bad"); if (!btn.dataset.d) f("due_time").value = ""; }
       else if (act === "prio") { sheet.querySelectorAll('[data-act="prio"]').forEach((b) => b.classList.toggle("on", b === btn)); f("priority").dataset.v = btn.dataset.v; }
       else if (act === "sheettag") btn.classList.toggle("on");
       else if (act === "cancel") { this._editing = null; this._confirm = null; this._update(); }
@@ -685,7 +744,12 @@
         if (this._confirm === "sheet") { this._confirm = null; this._editing = null; this._call("delete_task", { task_id: task.id }); this._update(); }
         else { this._confirm = "sheet"; btn.textContent = this._t.sure; }
       } else if (act === "save") {
-        const date = f("due_date").value;
+        const date = parseDateText(f("due_date").value);
+        const time = parseTimeText(f("due_time").value);
+        f("due_date").classList.toggle("bad", date === null);
+        f("due_time").classList.toggle("bad", time === null);
+        if (date === null || time === null) return; // keep the sheet open
+
         const tags = [...sheet.querySelectorAll('[data-act="sheettag"].on')].map((c) => c.dataset.tag);
         const extra = f("newtag").value.split(",").map((x) => x.trim()).filter(Boolean);
         const data = {
@@ -693,7 +757,7 @@
           title: f("title").value.trim() || task.title,
           notes: f("notes").value.trim() || null,
           due_date: date || null,
-          due_time: date && f("due_time").value ? f("due_time").value + ":00" : null,
+          due_time: date && time ? time + ":00" : null,
           priority: +f("priority").dataset.v,
           tags: [...tags, ...extra],
           recurrence: recurrenceFromForm({
@@ -705,6 +769,30 @@
         this._call("update_task", data);
         this._update();
       }
+    }
+
+    _onMask(e) {
+      const el = e.target;
+      if (!el.dataset || !el.dataset.mask) return;
+      el.value = el.dataset.mask === "date" ? maskDate(el.value) : maskTime(el.value);
+      el.classList.remove("bad");
+    }
+
+    _onPick(e) {
+      const btn = e.target.closest && e.target.closest('[data-act="pickdate"]');
+      if (!btn) return;
+      const wrap = btn.closest(".dt");
+      const hidden = wrap.querySelector(".pickhidden");
+      hidden.value = parseDateText(wrap.querySelector('[data-mask="date"]').value) || "";
+      try { hidden.showPicker(); } catch (err) { hidden.focus(); }
+    }
+
+    _onPicked(e) {
+      const el = e.target;
+      if (!el.classList || !el.classList.contains("pickhidden")) return;
+      const text = el.closest(".dt").querySelector('[data-mask="date"]');
+      text.value = fmtDate(el.value);
+      text.classList.remove("bad");
     }
 
     _onHead(e) {
@@ -809,5 +897,5 @@
     type: "tickoff-card", name: "Tickoff", preview: false,
     description: "Tasks with quick add, tags, priority, subtasks, recurrence and a today view.",
   });
-  window.__tickoff = { esc, textColor, parseQuickAdd, buildSections, usedTags, dropTarget, recurrenceFromForm, describeRecurrence, relativeDay, VERSION };
+  window.__tickoff = { fmtDate, parseDateText, parseTimeText, maskDate, maskTime, esc, textColor, parseQuickAdd, buildSections, usedTags, dropTarget, recurrenceFromForm, describeRecurrence, relativeDay, VERSION };
 })();

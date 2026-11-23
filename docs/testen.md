@@ -41,10 +41,15 @@ Doel: in je eigen HA controleren wat de automatische tests niet kunnen. Maak voo
 - [ ] Zonder taken: vriendelijke lege staat. Donkere modus oogt goed.
 - [ ] Telefoon (Companion app): menuknop opent de navigatie; kaart bruikbaar. Bijzondere aandacht voor het bewerkvenster en slepen met touch.
 
+## Datum en tijd
+
+- [ ] Overal 24-uurs tijd (`17:30`, nooit AM/PM) en datums als `dd-mm-jjjj`, ook in het bewerkvenster, het toevoegveld en bij de meldtijd.
+- [ ] Typen `1703` wordt `17:03`, `12032026` wordt `12-03-2026`; een ongeldige datum/tijd kleurt rood en wordt niet opgeslagen. Het kalender-icoontje opent een datumkiezer die `dd-mm-jjjj` invult.
+
 ## Meldingen en Telegram
 
 - [ ] Instellingen → Meldingen: je Telegram-bot-entiteit staat bovenaan met een blauwe **Telegram**-badge (de naam is bijv. "Home Assistant Remco"). Is hij er niet? Meld de entiteit-id (Ontwikkelhulpmiddelen → Toestanden, filter `notify.`).
-- [ ] Vink Telegram aan → **Opslaan** → **Testbericht sturen**: er komt een bericht "Test notification from Tickoff ✅" in Telegram.
+- [ ] Vink Telegram aan, zet de meldtijd op bijv. `18:45` en klik **Opslaan**: keuze en tijd blijven staan, ook na verversen (dit sprong eerder terug naar de oude waarden). Klik daarna **Testbericht sturen**: er komt een bericht "Test notification from Tickoff ✅" in Telegram.
 - [ ] Vink ook je telefoon aan: de test komt op beide.
 - [ ] Taak voor vandaag zonder tijd, aangemaakt vóór de meldtijd → melding op de meldtijd (standaard 08:00), één keer, ook na een HA-herstart.
 - [ ] Taak met tijd → melding op die tijd. Taak voor vandaag ná de meldtijd aangemaakt → geen melding (bewust).

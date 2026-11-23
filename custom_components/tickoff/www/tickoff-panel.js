@@ -15,7 +15,7 @@
       new_tag: "New tag", used_in: "tasks", error: "Error", saved: "Saved",
       notifications: "Notifications", notify_intro: "Get a message when a task is due. Choose where it should go.",
       no_targets: "No notification targets found. Set up the Telegram bot integration (or the mobile app) in Home Assistant and they will appear here.",
-      telegram: "Telegram", notify_time: "Notification time",
+      telegram: "Telegram", notify_time: "Notification time (24-hour)", time_ph: "hh:mm", invalid_time: "Use 24-hour time, for example 08:00",
       notify_help: "Tasks with a date but no time are announced at this time; tasks with a time are announced at that time.",
       send_test: "Send test message", test_sent: "Test message sent to {n} target(s).", choose_first: "Choose at least one target first.",
       entity_kind: "Notify entity", service_kind: "Notify service", read_only: "Only administrators can change these settings.",
@@ -27,7 +27,7 @@
       new_tag: "Nieuwe tag", used_in: "taken", error: "Fout", saved: "Opgeslagen",
       notifications: "Meldingen", notify_intro: "Krijg een bericht als een taak vervalt. Kies waar het heen moet.",
       no_targets: "Geen meldingsdoelen gevonden. Stel de Telegram-bot-integratie (of de mobiele app) in Home Assistant in, dan verschijnen ze hier.",
-      telegram: "Telegram", notify_time: "Meldtijd",
+      telegram: "Telegram", notify_time: "Meldtijd (24-uurs)", time_ph: "uu:mm", invalid_time: "Gebruik 24-uurs tijd, bijvoorbeeld 08:00",
       notify_help: "Taken met een datum maar zonder tijd worden op deze tijd gemeld; taken met een tijd op die tijd.",
       send_test: "Testbericht sturen", test_sent: "Testbericht gestuurd naar {n} doel(en).", choose_first: "Kies eerst minstens één doel.",
       entity_kind: "Notify-entiteit", service_kind: "Notify-service", read_only: "Alleen beheerders kunnen deze instellingen wijzigen.",
@@ -36,6 +36,18 @@
 
   const esc = (s) =>
     String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+  // 24-hour time typed as hh:mm, whatever the browser's locale is
+  const parseTimeText = (text) => {
+    const v = (text || "").trim();
+    if (!v) return "";
+    const x = /^(\d{1,2})[:.]?(\d{2})$/.exec(v);
+    return !x || +x[1] > 23 || +x[2] > 59 ? null : `${String(+x[1]).padStart(2, "0")}:${x[2]}`;
+  };
+  const maskTime = (v) => {
+    const d = v.replace(/\D/g, "").slice(0, 4);
+    return d.length > 2 ? `${d.slice(0, 2)}:${d.slice(2)}` : d;
+  };
 
   const CSS = `
     :host { display: block; height: 100%; background: var(--primary-background-color); color: var(--primary-text-color);
@@ -183,6 +195,7 @@
         const main = sr.querySelector("main");
         main.addEventListener("click", (e) => this._onContent(e));
         main.addEventListener("change", (e) => this._onChange(e));
+        main.addEventListener("input", (e) => { if (e.target.id === "settime") { e.target.value = maskTime(e.target.value); e.target.style.outline = ""; } });
       }
       sr.querySelector("h1").textContent = t.title;
       sr.querySelector(".layout").classList.toggle("narrow", !!this._narrow);
@@ -285,7 +298,7 @@
       }).join("");
       return `<div class="box"><h2>${esc(t.notifications)}</h2><div class="muted">${esc(t.notify_intro)}</div>
         ${rows || `<div class="empty">${esc(t.no_targets)}</div>`}
-        <div class="field">${esc(t.notify_time)}<input id="settime" type="time" value="${esc((s.notify_time || "08:00:00").slice(0, 5))}" ${admin ? "" : "disabled"}></div>
+        <div class="field">${esc(t.notify_time)}<input id="settime" type="text" inputmode="numeric" maxlength="5" placeholder="${esc(t.time_ph)}" value="${esc((s.notify_time || "08:00:00").slice(0, 5))}" ${admin ? "" : "disabled"}></div>
         <p class="muted">${esc(t.notify_help)}</p>
         ${admin ? `<div class="tools"><button class="btn primary" data-act="savesettings">${esc(t.save)}</button>
           <button class="btn" data-act="testnotify" ${chosen.length ? "" : "disabled"}><ha-icon icon="mdi:send"></ha-icon> ${esc(t.send_test)}</button>
@@ -303,6 +316,7 @@
 
     _onChange(e) {
       const el = e.target;
+      if (el.id === "settime") { el.value = maskTime(el.value); return; }
       if (!el.dataset) return;
       if (el.dataset.act === "tagcolor") this._hass.callService("tickoff", "set_tag", { name: el.closest("[data-tag]").dataset.tag, color: el.value });
       else if (el.dataset.act === "target") {
@@ -317,7 +331,12 @@
     async _save() {
       const sr = this.shadowRoot;
       const chosen = this._pick || (this._snap.settings && this._snap.settings.notify_targets) || [];
-      await this._ws({ type: "tickoff/settings_set", notify_targets: chosen, notify_time: (sr.getElementById("settime").value || "08:00") + ":00" });
+      const time = parseTimeText(sr.getElementById("settime").value || "08:00");
+      if (time === null) { sr.getElementById("settime").style.outline = "2px solid var(--error-color, #d32f2f)"; this._error = this._t.invalid_time; this._render(); throw new Error("invalid time"); }
+      await this._ws({ type: "tickoff/settings_set", notify_targets: chosen, notify_time: time + ":00" });
+      // show what was saved right away; the server pushes the same values a moment later
+      this._snap = { ...this._snap, settings: { ...this._snap.settings, notify_targets: chosen, notify_time: time + ":00" } };
+      this._pick = null;
     }
 
     async _onContent(e) {
@@ -349,7 +368,6 @@
           if (name) await this._hass.callService("tickoff", "set_tag", { name, color: $("newtagcolor").value });
         } else if (act === "savesettings") {
           await this._save();
-          this._pick = null;
           this._flash = t.saved;
           this._render();
           clearTimeout(this._ft);
@@ -358,7 +376,6 @@
           if (!(this._pick || (this._snap.settings && this._snap.settings.notify_targets) || []).length) { this._flash = t.choose_first; this._render(); return; }
           await this._save(); // the test goes to what is chosen right now
           const res = await this._ws({ type: "tickoff/test_notify" });
-          this._pick = null;
           this._flash = t.test_sent.replace("{n}", res.sent);
           this._render();
         }

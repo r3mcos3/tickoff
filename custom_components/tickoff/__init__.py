@@ -40,8 +40,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: TickoffConfigEntry) -> b
     await store.async_load()
     entry.runtime_data = store
     async_get_hub(hass).add_store(store)
+    entry.async_on_unload(entry.add_update_listener(_async_options_changed))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
+
+
+async def _async_options_changed(hass: HomeAssistant, entry: TickoffConfigEntry) -> None:
+    """Settings changed (panel or Configure): tell open panels so they show the saved values."""
+    async_get_hub(hass).async_refresh_views()
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: TickoffConfigEntry) -> bool:
