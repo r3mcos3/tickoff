@@ -19,7 +19,7 @@ def mock_entry() -> MockConfigEntry:
         domain=DOMAIN,
         title="Groceries",
         unique_id="groceries",
-        data={CONF_LIST_NAME: "Groceries"},
+        data={CONF_LIST_NAME: "Groceries", "kind": "list"},
     )
 
 

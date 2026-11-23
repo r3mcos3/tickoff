@@ -36,6 +36,7 @@ class TagRegistry:
         self._tags: dict[str, dict[str, str]] = {}
         self._on_rename: list[Callable[[str, str], None]] = []
         self._on_delete: list[Callable[[str], None]] = []
+        self._listeners: list[Callable[[], None]] = []
         self._lock = asyncio.Lock()
         self._loaded = False
 
@@ -55,8 +56,20 @@ class TagRegistry:
         return {"tags": self._tags}
 
     @callback
+    def async_add_listener(self, listener: Callable[[], None]) -> Callable[[], None]:
+        self._listeners.append(listener)
+
+        @callback
+        def _remove() -> None:
+            self._listeners.remove(listener)
+
+        return _remove
+
+    @callback
     def _changed(self) -> None:
         self._store.async_delay_save(self._data_to_save, SAVE_DELAY)
+        for listener in list(self._listeners):
+            listener()
 
     @callback
     def subscribe(

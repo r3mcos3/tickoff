@@ -16,10 +16,20 @@ from homeassistant.helpers.selector import (
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
+    TimeSelector,
 )
 from homeassistant.util import slugify
 
-from .const import CONF_LIST_NAME, CONF_NOTIFY_SERVICE, DOMAIN
+from .const import (
+    CONF_KIND,
+    CONF_LIST_NAME,
+    CONF_NOTIFY_SERVICE,
+    CONF_NOTIFY_TIME,
+    DEFAULT_NOTIFY_TIME,
+    DOMAIN,
+    KIND_LIST,
+    KIND_OVERVIEW,
+)
 
 # Legacy notify services that are not "send a message to a target" services
 _EXCLUDED_NOTIFY = {"send_message"}
@@ -66,7 +76,9 @@ class TickoffConfigFlow(ConfigFlow, domain=DOMAIN):
                 if service := user_input.get(CONF_NOTIFY_SERVICE):
                     options[CONF_NOTIFY_SERVICE] = service
                 return self.async_create_entry(
-                    title=name, data={CONF_LIST_NAME: name}, options=options
+                    title=name,
+                    data={CONF_LIST_NAME: name, CONF_KIND: KIND_LIST},
+                    options=options,
                 )
 
         return self.async_show_form(
@@ -81,8 +93,17 @@ class TickoffConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
 
+    async def async_step_system(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Create the overview entry (done automatically after the first list)."""
+        await self.async_set_unique_id(KIND_OVERVIEW)
+        self._abort_if_unique_id_configured()
+        return self.async_create_entry(title="Tickoff", data={CONF_KIND: KIND_OVERVIEW})
+
+
 class TickoffOptionsFlow(OptionsFlowWithReload):
-    """Change the notify service of a list."""
+    """List: notify service. Overview: global default notify service and notify time."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -90,9 +111,12 @@ class TickoffOptionsFlow(OptionsFlowWithReload):
         if user_input is not None:
             return self.async_create_entry(data=user_input)
 
-        schema = vol.Schema(
-            {vol.Optional(CONF_NOTIFY_SERVICE): _notify_selector(self.hass)}
-        )
+        fields: dict[Any, Any] = {
+            vol.Optional(CONF_NOTIFY_SERVICE): _notify_selector(self.hass)
+        }
+        if self.config_entry.data.get(CONF_KIND) == KIND_OVERVIEW:
+            fields[vol.Optional(CONF_NOTIFY_TIME, default=DEFAULT_NOTIFY_TIME)] = TimeSelector()
+        schema = vol.Schema(fields)
         return self.async_show_form(
             step_id="init",
             data_schema=self.add_suggested_values_to_schema(

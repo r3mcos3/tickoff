@@ -14,7 +14,7 @@ async def test_create_list(hass):
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "Chores"
-    assert result["data"] == {"name": "Chores"}
+    assert result["data"] == {"name": "Chores", "kind": "list"}
 
 
 async def test_duplicate_name_aborts(hass, mock_entry):
