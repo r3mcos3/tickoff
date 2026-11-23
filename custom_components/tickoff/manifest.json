@@ -1,13 +1,14 @@
 {
   "domain": "tickoff",
   "name": "Tickoff",
-  "codeowners": [],
+  "categories": ["productivity_information.calendars_todos"],
+  "codeowners": ["@r3mcos3"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://example.invalid/tickoff",
+  "documentation": "https://github.com/r3mcos3/tickoff",
   "integration_type": "service",
   "iot_class": "local_push",
-  "issue_tracker": "https://example.invalid/tickoff/issues",
+  "issue_tracker": "https://github.com/r3mcos3/tickoff/issues",
   "requirements": [],
-  "version": "0.1.0"
+  "version": "0.2.0"
 }
