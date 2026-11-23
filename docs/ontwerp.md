@@ -99,17 +99,17 @@ HA `Store` (JSON in `.storage`): honderden taken, geen tijdreeksen. Eigen databa
 2. **Eigen Lovelace-kaart** (M6), geleverd door de integratie en automatisch geregistreerd: lijst met prioriteit-/tag-chips, tag-filter, subtaken in-line, drag & drop, snooze-knop, "voltooide verwijderen", vandaag/achterstallig, 12/24 uurs volgens gebruiker, read-only modus, leeg-verbergen.
 3. Visuele editor voor de kaart.
 
-## Mijlpalen
-| | Inhoud | Opmerking |
+## Mijlpalen (stand v0.1.0)
+| | Inhoud | Status |
 |---|---|---|
-| **M1 (MVP-basis)** | manifest, config flow (lijsten), Store, todo-platform (titel/notities/due/status) | scaffold nu |
-| **M2 (klaar)** | prioriteit, globaal tagregister met kleur, services add/update/complete/reopen/delete/get + tag-services, events created/completed/reopened, notify-service-optie in config/options flow | notify wordt pas verstuurd in M5 |
-| **M3** | subtaken, snooze, bulk-verwijderen, volgorde, auto-voltooien parent | |
-| **M4** | herhaling met rollover (5 patronen) | veel tests (DST, maandeinden) |
-| **M5** | sensoren open/vandaag/achterstallig, melding 08:00/tijd ontdubbeld, blueprint | **MVP-compleet voor dagelijks gebruik** |
-| **M6** | eigen Lovelace-kaart + visuele editor, vandaag-overzicht | grootste werk |
-| **M7** | geschiedenis/completed_at-statistiek, calendar-entity, import/export | |
-| **M8** | Marketplace-publicatie (HACS-default pas later), README, brand, vertalingen (EN/NL), release | akkoord van Remco nodig |
+| M1 | manifest, config flow, Store, todo-platform | klaar |
+| M2 | prioriteit, globaal tagregister met kleur, services, events, notify-optie | klaar |
+| M3 | subtaken (auto-voltooien ouder), snooze, bulk-verwijderen, volgorde (`move_task`) | klaar |
+| M4 | herhaling met rollover (5 patronen), `completed_at` + geschiedenis, sensoren open/vandaag/achterstallig per lijst en over alle lijsten (overzicht-entry) | klaar |
+| M5 | melding via notify-service per lijst of globaal, ontdubbeld en herstartbestendig (`notified_for`), meldtijd instelbaar, `tickoff_task_due`-event, blueprint | klaar |
+| M6 | eigen Lovelace-kaart (lijst, vandaag, tags met kleur + filter, prioriteit, subtaken, slepen, snooze, bulk, visuele editor), geen buildstap | klaar |
+| M7 | tags in niet-geladen lijsten, calendar-entiteit, import/export | tags klaar; calendar en import/export **niet gebouwd** |
+| M8 | Marketplace/HACS-custom-repo, README, brand-icoon, CI | klaar (default-lijsten bewust niet) |
 
 Schatting totaal 12–16 dagen; M1–M5 (zonder kaart) ± 5–6 dagen.
 
@@ -121,5 +121,5 @@ Schatting totaal 12–16 dagen; M1–M5 (zonder kaart) ± 5–6 dagen.
 - Migratiepad bij schemawijzigingen in de Store.
 
 ## Open vragen (voor Remco)
-- Licentie (README zegt nu "te bepalen"), nodig voor de eerste publieke release.
-- Notify: per lijst is gebouwd; ook een globale standaard-service?
+- Licentie: MIT (default van de uitvoerder, Remco gaf geen keuze).
+- Notify: per lijst en globaal (overzicht-entry) zijn beide gebouwd.
