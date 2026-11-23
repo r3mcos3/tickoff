@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Werknaam: **ha-tasks** (domein `ha_tasks`). Standalone Home Assistant custom integration voor taken,
+**Tickoff** — "Tickoff: tasks for Home Assistant" (domein `tickoff`, repo `~/github/tickoff`). Standalone Home Assistant custom integration voor taken,
 zonder enige afhankelijkheid van Keepr. Taken leven in HA zelf (HA `Store`).
 
 ## Werkafspraken
@@ -17,7 +17,7 @@ zonder enige afhankelijkheid van Keepr. Taken leven in HA zelf (HA `Store`).
 - `TodoListEntity` in `todo.py`; sensoren/binary_sensors in eigen platformbestanden; `DataUpdateCoordinator` alleen waar polling/aggregatie nuttig is (taken zelf zijn push: store-wijziging -> `async_write_ha_state`).
 - `entry.runtime_data` voor de store/manager (geen `hass.data[DOMAIN]`).
 - Entities: `_attr_has_entity_name = True`, unique_id uit entry_id, device per lijst.
-- Services in `services.yaml` + registratie in `async_setup`; events met prefix `ha_tasks_`.
+- Services in `services.yaml` + registratie in `async_setup`; events met prefix `tickoff_`.
 - Typed (`from __future__ import annotations`), ruff-clean, geen magic strings (constanten in `const.py`).
 
 ## Tests
@@ -26,6 +26,6 @@ zonder enige afhankelijkheid van Keepr. Taken leven in HA zelf (HA `Store`).
 - Elke feature krijgt tests (config flow, store, entity, services).
 
 ## Structuur
-- `custom_components/ha_tasks/` de integratie
+- `custom_components/tickoff/` de integratie
 - `tests/` pytest
 - `docs/vergelijking.md`, `docs/ontwerp.md`

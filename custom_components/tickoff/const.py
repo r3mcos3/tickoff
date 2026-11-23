@@ -1,10 +1,10 @@
-"""Constants for ha-tasks."""
+"""Constants for tickoff."""
 
 from __future__ import annotations
 
 from typing import Final
 
-DOMAIN: Final = "ha_tasks"
+DOMAIN: Final = "tickoff"
 
 CONF_LIST_NAME: Final = "name"
 

@@ -3,7 +3,7 @@
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.data_entry_flow import FlowResultType
 
-from custom_components.ha_tasks.const import DOMAIN
+from custom_components.tickoff.const import DOMAIN
 
 
 async def test_create_list(hass):

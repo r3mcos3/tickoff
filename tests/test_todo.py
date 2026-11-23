@@ -5,7 +5,7 @@ from homeassistant.components.todo import DOMAIN as TODO_DOMAIN
 from homeassistant.components.todo import TodoServices
 from homeassistant.const import ATTR_ENTITY_ID
 
-ENTITY = "todo.groceries"
+ENTITY = "todo.tickoff_groceries"
 
 
 async def _call(hass, service, data):

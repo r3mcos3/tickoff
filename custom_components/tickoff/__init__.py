@@ -1,4 +1,4 @@
-"""ha-tasks: tasks for Home Assistant."""
+"""tickoff: tasks for Home Assistant."""
 
 from __future__ import annotations
 

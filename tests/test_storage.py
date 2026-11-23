@@ -2,7 +2,7 @@
 
 from datetime import date, time
 
-from custom_components.ha_tasks.storage import TaskStore
+from custom_components.tickoff.storage import TaskStore
 
 
 async def test_add_update_delete(hass):

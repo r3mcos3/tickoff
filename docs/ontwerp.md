@@ -1,4 +1,6 @@
-# Ontwerp ha_tasks
+# Ontwerp Tickoff
+
+> Tickoff: tasks for Home Assistant. Domein `tickoff`, entiteiten `todo.tickoff_<lijst>`.
 
 Standalone HA custom integration voor taken. Geen afhankelijkheid van Keepr; Keepr is alleen de bron van de kernfeatures. Zie `vergelijking.md` voor het waarom.
 
@@ -21,7 +23,7 @@ Standalone HA custom integration voor taken. Geen afhankelijkheid van Keepr; Kee
 - Verbetering t.o.v. Keepr: `completed_at` + geschiedenis per taak.
 
 ## Datamodel (Store, versie 1)
-Per config entry (= één lijst) `.storage/ha_tasks.<entry_id>`:
+Per config entry (= één lijst) `.storage/tickoff.<entry_id>`:
 
 ```json
 {
@@ -63,16 +65,16 @@ Per config entry (= één lijst) `.storage/ha_tasks.<entry_id>`:
 
 Core `TodoItem` kent geen prioriteit/tags/subtaken/herhaling; die zitten in eigen services en in de kaart. Via de todo-entity (Companion, Assist) werkt titel/notities/due/status/volgorde en afvinken van herhalende taken doet de rollover.
 
-## Services (domein `ha_tasks`)
+## Services (domein `tickoff`)
 `add_task`, `update_task`, `complete_task`, `reopen_task`, `snooze_task` (naar morgen), `delete_task`, `delete_completed`, `reorder_tasks`, `add_subtask` / `update_subtask` / `remove_subtask`, `set_tag` (kleur) / `delete_tag` / `rename_tag`, `get_tasks` (met `SupportsResponse.ONLY`, filter op status/tag/due) voor automations/Assist.
 
 ## Events
-`ha_tasks_task_created`, `_completed`, `_reopened`, `_snoozed`, `_due` (de ontdubbelde melding-trigger), `_overdue`. Payload: `entry_id`, `list_name`, `task_id`, `title`, `due_date`, `due_time`, `priority`, `tags`.
+`tickoff_task_created`, `_completed`, `_reopened`, `_snoozed`, `_due` (de ontdubbelde melding-trigger), `_overdue`. Payload: `entry_id`, `list_name`, `task_id`, `title`, `due_date`, `due_time`, `priority`, `tags`.
 
 ## Meldingen
 - Scheduler per entry (`async_track_time_change` op 08:00 + `async_track_point_in_time` voor taken met een tijd; herplannen na elke wijziging).
 - Een taak meldt **één keer per vervaldag**: bewaard in `notified_for`, restart-bestendig, tijd injecteerbaar in tests.
-- Meldingen = event `ha_tasks_task_due` + meegeleverd blueprint (notify-service naar keuze, bv. Telegram); optioneel option "notify service" in de options flow in M5.
+- Meldingen = event `tickoff_task_due` + meegeleverd blueprint (notify-service naar keuze, bv. Telegram); optioneel option "notify service" in de options flow in M5.
 - Geen wachten op triggers in blueprints, zodat het een HA-herstart overleeft.
 
 ## Opslag-keuze
@@ -111,4 +113,4 @@ Schatting totaal 12–16 dagen; M1–M5 (zonder kaart) ± 5–6 dagen.
 - Migratiepad bij schemawijzigingen in de Store.
 
 ## Open vragen (voor Remco)
-Naam (besloten: Tickoff), repo publiek/privé, HACS/Marketplace-publicatie, tags per lijst of globaal, notify-kanaal (alleen event+blueprint of ook ingebouwde notify-service).
+repo publiek/privé, HACS/Marketplace-publicatie, tags per lijst of globaal, notify-kanaal (alleen event+blueprint of ook ingebouwde notify-service).

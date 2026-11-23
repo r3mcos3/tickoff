@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.ha_tasks.const import CONF_LIST_NAME, DOMAIN
+from custom_components.tickoff.const import CONF_LIST_NAME, DOMAIN
 
 
 @pytest.fixture(autouse=True)

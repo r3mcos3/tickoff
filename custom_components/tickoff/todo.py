@@ -92,7 +92,7 @@ class TasksTodoListEntity(TodoListEntity):
         self._store: TaskStore = entry.runtime_data
         self._attr_unique_id = entry.entry_id
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)}, name=entry.title
+            identifiers={(DOMAIN, entry.entry_id)}, name=f"Tickoff {entry.title}"
         )
 
     async def async_added_to_hass(self) -> None:
