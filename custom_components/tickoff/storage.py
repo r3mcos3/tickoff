@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
-from datetime import date, time
+from datetime import date, time, timedelta
 from typing import Any
 
 from homeassistant.core import HomeAssistant, callback
@@ -15,6 +15,8 @@ from .const import (
     EVENT_TASK_COMPLETED,
     EVENT_TASK_CREATED,
     EVENT_TASK_REOPENED,
+    EVENT_TASK_SNOOZED,
+    HISTORY_LIMIT,
     PRIORITY_NONE,
     SAVE_DELAY,
     STATUS_DONE,
@@ -25,18 +27,29 @@ from .const import (
     TASK_CREATED_AT,
     TASK_DUE_DATE,
     TASK_DUE_TIME,
+    TASK_DUE_UPDATED_AT,
+    TASK_HISTORY,
     TASK_ID,
+    TASK_LAST_COMPLETED_AT,
     TASK_NOTES,
+    TASK_NOTIFIED_FOR,
     TASK_POSITION,
     TASK_PRIORITY,
+    TASK_RECURRENCE,
     TASK_STATUS,
+    TASK_SUBTASKS,
     TASK_TAGS,
     TASK_TITLE,
     TASK_UPDATED_AT,
 )
+from .recurrence import next_due, normalize
 from .tags import TagRegistry
 
 _UNSET: Any = object()
+
+
+def _fmt_time(value: time | None) -> str | None:
+    return value.isoformat(timespec="minutes") if value else None
 
 
 class TaskStore:
@@ -56,12 +69,20 @@ class TaskStore:
         self._listeners: list[Callable[[], None]] = []
         self._unsub_tags: Callable[[], None] | None = None
 
+    # ---- lifecycle -------------------------------------------------------
+
     async def async_load(self) -> None:
         data = await self._store.async_load()
         self._tasks = {t[TASK_ID]: t for t in (data or {}).get("tasks", [])}
         for task in self._tasks.values():  # tolerate data from older versions
             task.setdefault(TASK_PRIORITY, PRIORITY_NONE)
             task.setdefault(TASK_TAGS, [])
+            task.setdefault(TASK_SUBTASKS, [])
+            task.setdefault(TASK_RECURRENCE, None)
+            task.setdefault(TASK_HISTORY, [])
+            task.setdefault(TASK_LAST_COMPLETED_AT, None)
+            task.setdefault(TASK_DUE_UPDATED_AT, task.get(TASK_CREATED_AT))
+            task.setdefault(TASK_NOTIFIED_FOR, None)
             # drop tags that no longer exist in the global register
             task[TASK_TAGS] = [t for t in task[TASK_TAGS] if self._tag_registry.find(t)]
         self._unsub_tags = self._tag_registry.subscribe(
@@ -101,8 +122,10 @@ class TaskStore:
     def _data_to_save(self) -> dict[str, Any]:
         return {"tasks": self.tasks()}
 
+    # ---- helpers ---------------------------------------------------------
+
     @callback
-    def _fire(self, event: str, task: dict[str, Any]) -> None:
+    def _fire(self, event: str, task: dict[str, Any], **extra: Any) -> None:
         self._hass.bus.async_fire(
             event,
             {
@@ -114,8 +137,15 @@ class TaskStore:
                 "due_time": task[TASK_DUE_TIME],
                 "priority": task[TASK_PRIORITY],
                 "tags": list(task[TASK_TAGS]),
+                **extra,
             },
         )
+
+    @staticmethod
+    def _log(task: dict[str, Any], event: str, **extra: Any) -> None:
+        history = task[TASK_HISTORY]
+        history.append({"at": dt_util.utcnow().isoformat(), "event": event, **extra})
+        del history[:-HISTORY_LIMIT]
 
     @callback
     def _resolve_tags(self, tags: list[str]) -> list[str]:
@@ -149,6 +179,15 @@ class TaskStore:
         if touched:
             self._changed()
 
+    @staticmethod
+    def _set_due(task: dict[str, Any], due_date: date | None, due_time: time | None) -> None:
+        task[TASK_DUE_DATE] = due_date.isoformat() if due_date else None
+        task[TASK_DUE_TIME] = _fmt_time(due_time) if due_date else None
+        task[TASK_DUE_UPDATED_AT] = dt_util.now().isoformat()
+        task[TASK_NOTIFIED_FOR] = None
+
+    # ---- queries ---------------------------------------------------------
+
     @callback
     def tasks(self) -> list[dict[str, Any]]:
         """Return tasks in manual order."""
@@ -157,6 +196,8 @@ class TaskStore:
     @callback
     def get(self, task_id: str) -> dict[str, Any] | None:
         return self._tasks.get(task_id)
+
+    # ---- mutations -------------------------------------------------------
 
     @callback
     def add(
@@ -168,25 +209,31 @@ class TaskStore:
         due_time: time | None = None,
         priority: int = PRIORITY_NONE,
         tags: list[str] | None = None,
+        recurrence: dict[str, Any] | None = None,
+        subtasks: list[str] | None = None,
     ) -> dict[str, Any]:
         now = dt_util.utcnow().isoformat()
         position = max((t[TASK_POSITION] for t in self._tasks.values()), default=-1) + 1
-        task = {
+        task: dict[str, Any] = {
             TASK_ID: uuid.uuid4().hex,
             TASK_TITLE: title,
             TASK_NOTES: notes or "",
-            TASK_DUE_DATE: due_date.isoformat() if due_date else None,
-            TASK_DUE_TIME: (
-                due_time.isoformat(timespec="minutes") if due_time and due_date else None
-            ),
             TASK_PRIORITY: priority,
             TASK_TAGS: self._resolve_tags(tags or []),
+            TASK_SUBTASKS: [
+                {"id": uuid.uuid4().hex, "title": s, "done": False} for s in (subtasks or [])
+            ],
+            TASK_RECURRENCE: normalize(recurrence, due_date, dt_util.now().date()),
             TASK_STATUS: STATUS_OPEN,
             TASK_COMPLETED_AT: None,
+            TASK_LAST_COMPLETED_AT: None,
             TASK_POSITION: position,
             TASK_CREATED_AT: now,
             TASK_UPDATED_AT: now,
+            TASK_HISTORY: [],
         }
+        self._set_due(task, due_date, due_time)
+        self._log(task, "created")
         self._tasks[task[TASK_ID]] = task
         self._changed()
         self._fire(EVENT_TASK_CREATED, task)
@@ -203,40 +250,90 @@ class TaskStore:
         due_time: Any = _UNSET,
         priority: int | None = None,
         tags: list[str] | None = None,
+        recurrence: Any = _UNSET,
         done: bool | None = None,
     ) -> dict[str, Any]:
-        """Update fields; pass None for notes/due_* to clear them, omit to keep."""
+        """Update fields; pass None for notes/due_*/recurrence to clear them, omit to keep."""
         task = self._tasks[task_id]
         if title is not None:
             task[TASK_TITLE] = title
         if notes is not _UNSET:
             task[TASK_NOTES] = notes or ""
-        if due_date is not _UNSET:
-            task[TASK_DUE_DATE] = due_date.isoformat() if due_date else None
-        if due_time is not _UNSET:
-            task[TASK_DUE_TIME] = (
-                due_time.isoformat(timespec="minutes") if due_time else None
+        if due_date is not _UNSET or due_time is not _UNSET:
+            new_date = (
+                (date.fromisoformat(task[TASK_DUE_DATE]) if task[TASK_DUE_DATE] else None)
+                if due_date is _UNSET
+                else due_date
             )
-        if task[TASK_DUE_DATE] is None:
-            task[TASK_DUE_TIME] = None  # a time without a date is meaningless
+            new_time = (
+                (time.fromisoformat(task[TASK_DUE_TIME]) if task[TASK_DUE_TIME] else None)
+                if due_time is _UNSET
+                else due_time
+            )
+            if (new_date.isoformat() if new_date else None, _fmt_time(new_time)) != (
+                task[TASK_DUE_DATE],
+                task[TASK_DUE_TIME],
+            ):
+                self._set_due(task, new_date, new_time)
         if priority is not None:
             task[TASK_PRIORITY] = priority
         if tags is not None:
             task[TASK_TAGS] = self._resolve_tags(tags)
-        event: str | None = None
-        if done is not None:
-            if done and task[TASK_STATUS] != STATUS_DONE:
-                task[TASK_STATUS] = STATUS_DONE
-                task[TASK_COMPLETED_AT] = dt_util.utcnow().isoformat()
-                event = EVENT_TASK_COMPLETED
-            elif not done and task[TASK_STATUS] != STATUS_OPEN:
-                task[TASK_STATUS] = STATUS_OPEN
-                task[TASK_COMPLETED_AT] = None
-                event = EVENT_TASK_REOPENED
+        if recurrence is not _UNSET:
+            due = date.fromisoformat(task[TASK_DUE_DATE]) if task[TASK_DUE_DATE] else None
+            task[TASK_RECURRENCE] = normalize(recurrence, due, dt_util.now().date())
         task[TASK_UPDATED_AT] = dt_util.utcnow().isoformat()
+        if done is True:
+            self._complete(task)
+        elif done is False:
+            self._reopen(task)
         self._changed()
-        if event:
-            self._fire(event, task)
+        return task
+
+    @callback
+    def _complete(self, task: dict[str, Any]) -> None:
+        """Tick off. Recurring tasks stay open and roll to the next due date."""
+        if task[TASK_STATUS] == STATUS_DONE:
+            return
+        now = dt_util.utcnow().isoformat()
+        task[TASK_LAST_COMPLETED_AT] = now
+        rule = task[TASK_RECURRENCE]
+        if rule:
+            today = dt_util.now().date()
+            due = date.fromisoformat(task[TASK_DUE_DATE]) if task[TASK_DUE_DATE] else None
+            new_due = next_due(rule, due, today)
+            self._log(task, "completed", next_due=new_due.isoformat())
+            time_ = time.fromisoformat(task[TASK_DUE_TIME]) if task[TASK_DUE_TIME] else None
+            for sub in task[TASK_SUBTASKS]:
+                sub["done"] = False
+            self._set_due(task, new_due, time_)
+            self._fire(EVENT_TASK_COMPLETED, task, recurring=True)
+            return
+        task[TASK_STATUS] = STATUS_DONE
+        task[TASK_COMPLETED_AT] = now
+        self._log(task, "completed")
+        self._fire(EVENT_TASK_COMPLETED, task, recurring=False)
+
+    @callback
+    def _reopen(self, task: dict[str, Any]) -> None:
+        if task[TASK_STATUS] != STATUS_DONE:
+            return
+        task[TASK_STATUS] = STATUS_OPEN
+        task[TASK_COMPLETED_AT] = None
+        self._log(task, "reopened")
+        self._fire(EVENT_TASK_REOPENED, task)
+
+    @callback
+    def snooze(self, task_id: str) -> dict[str, Any]:
+        """Push the due date to tomorrow (time is kept)."""
+        task = self._tasks[task_id]
+        tomorrow = dt_util.now().date() + timedelta(days=1)
+        time_ = time.fromisoformat(task[TASK_DUE_TIME]) if task[TASK_DUE_TIME] else None
+        self._set_due(task, tomorrow, time_)
+        task[TASK_UPDATED_AT] = dt_util.utcnow().isoformat()
+        self._log(task, "snoozed", to=tomorrow.isoformat())
+        self._changed()
+        self._fire(EVENT_TASK_SNOOZED, task)
         return task
 
     @callback
@@ -244,6 +341,14 @@ class TaskStore:
         for task_id in task_ids:
             self._tasks.pop(task_id)
         self._changed()
+
+    @callback
+    def delete_completed(self) -> int:
+        """Remove every done task; returns how many."""
+        done = [t[TASK_ID] for t in self._tasks.values() if t[TASK_STATUS] == STATUS_DONE]
+        if done:
+            self.delete(done)
+        return len(done)
 
     @callback
     def move(self, task_id: str, previous_id: str | None) -> None:
@@ -254,3 +359,54 @@ class TaskStore:
         for position, tid in enumerate(order):
             self._tasks[tid][TASK_POSITION] = position
         self._changed()
+
+    # ---- subtasks --------------------------------------------------------
+
+    @callback
+    def add_subtask(self, task_id: str, title: str) -> dict[str, Any]:
+        task = self._tasks[task_id]
+        sub = {"id": uuid.uuid4().hex, "title": title, "done": False}
+        task[TASK_SUBTASKS].append(sub)
+        if task[TASK_STATUS] == STATUS_DONE:  # a new open subtask reopens a done parent
+            self._reopen(task)
+        self._changed()
+        return sub
+
+    @callback
+    def update_subtask(
+        self,
+        task_id: str,
+        subtask_id: str,
+        *,
+        title: str | None = None,
+        done: bool | None = None,
+    ) -> dict[str, Any]:
+        """Edit a subtask. Ticking the last open subtask completes the parent."""
+        task = self._tasks[task_id]
+        sub = next(s for s in task[TASK_SUBTASKS] if s["id"] == subtask_id)
+        if title is not None:
+            sub["title"] = title
+        if done is not None:
+            sub["done"] = done
+        if done is True and all(s["done"] for s in task[TASK_SUBTASKS]):
+            self._complete(task)
+        elif done is False and task[TASK_STATUS] == STATUS_DONE:
+            self._reopen(task)
+        self._changed()
+        return sub
+
+    @callback
+    def remove_subtask(self, task_id: str, subtask_id: str) -> None:
+        task = self._tasks[task_id]
+        before = len(task[TASK_SUBTASKS])
+        task[TASK_SUBTASKS] = [s for s in task[TASK_SUBTASKS] if s["id"] != subtask_id]
+        if len(task[TASK_SUBTASKS]) == before:
+            raise KeyError(subtask_id)
+        self._changed()
+
+    # ---- notifier support ------------------------------------------------
+
+    @callback
+    def mark_notified(self, task_id: str, due_date: str) -> None:
+        self._tasks[task_id][TASK_NOTIFIED_FOR] = due_date
+        self._store.async_delay_save(self._data_to_save, SAVE_DELAY)
