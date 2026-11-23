@@ -12,6 +12,10 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    EVENT_TASK_COMPLETED,
+    EVENT_TASK_CREATED,
+    EVENT_TASK_REOPENED,
+    PRIORITY_NONE,
     SAVE_DELAY,
     STATUS_DONE,
     STATUS_OPEN,
@@ -24,10 +28,13 @@ from .const import (
     TASK_ID,
     TASK_NOTES,
     TASK_POSITION,
+    TASK_PRIORITY,
     TASK_STATUS,
+    TASK_TAGS,
     TASK_TITLE,
     TASK_UPDATED_AT,
 )
+from .tags import TagRegistry
 
 _UNSET: Any = object()
 
@@ -35,17 +42,37 @@ _UNSET: Any = object()
 class TaskStore:
     """All tasks of one list, kept in memory and persisted with a delayed save."""
 
-    def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
+    def __init__(
+        self, hass: HomeAssistant, entry_id: str, list_name: str, tags: TagRegistry
+    ) -> None:
         self._hass = hass
+        self.entry_id = entry_id
+        self.list_name = list_name
+        self._tag_registry = tags
         self._store: Store[dict[str, Any]] = Store(
             hass, STORAGE_VERSION, f"{STORAGE_KEY_PREFIX}{entry_id}"
         )
         self._tasks: dict[str, dict[str, Any]] = {}
         self._listeners: list[Callable[[], None]] = []
+        self._unsub_tags: Callable[[], None] | None = None
 
     async def async_load(self) -> None:
         data = await self._store.async_load()
         self._tasks = {t[TASK_ID]: t for t in (data or {}).get("tasks", [])}
+        for task in self._tasks.values():  # tolerate data from older versions
+            task.setdefault(TASK_PRIORITY, PRIORITY_NONE)
+            task.setdefault(TASK_TAGS, [])
+            # drop tags that no longer exist in the global register
+            task[TASK_TAGS] = [t for t in task[TASK_TAGS] if self._tag_registry.find(t)]
+        self._unsub_tags = self._tag_registry.subscribe(
+            self._on_tag_renamed, self._on_tag_deleted
+        )
+
+    @callback
+    def async_unsubscribe(self) -> None:
+        if self._unsub_tags is not None:
+            self._unsub_tags()
+            self._unsub_tags = None
 
     async def async_flush(self) -> None:
         """Write pending changes now (delayed saves are lost on unload otherwise)."""
@@ -75,6 +102,54 @@ class TaskStore:
         return {"tasks": self.tasks()}
 
     @callback
+    def _fire(self, event: str, task: dict[str, Any]) -> None:
+        self._hass.bus.async_fire(
+            event,
+            {
+                "entry_id": self.entry_id,
+                "list_name": self.list_name,
+                "task_id": task[TASK_ID],
+                "title": task[TASK_TITLE],
+                "due_date": task[TASK_DUE_DATE],
+                "due_time": task[TASK_DUE_TIME],
+                "priority": task[TASK_PRIORITY],
+                "tags": list(task[TASK_TAGS]),
+            },
+        )
+
+    @callback
+    def _resolve_tags(self, tags: list[str]) -> list[str]:
+        """Register unknown tags (global register) and dedupe, keeping order."""
+        resolved: list[str] = []
+        for tag in tags:
+            if not tag.strip():
+                continue
+            name = self._tag_registry.ensure(tag)
+            if name not in resolved:
+                resolved.append(name)
+        return resolved
+
+    @callback
+    def _on_tag_renamed(self, old: str, new: str) -> None:
+        touched = False
+        for task in self._tasks.values():
+            if old in task[TASK_TAGS]:
+                task[TASK_TAGS] = [new if t == old else t for t in task[TASK_TAGS]]
+                touched = True
+        if touched:
+            self._changed()
+
+    @callback
+    def _on_tag_deleted(self, name: str) -> None:
+        touched = False
+        for task in self._tasks.values():
+            if name in task[TASK_TAGS]:
+                task[TASK_TAGS] = [t for t in task[TASK_TAGS] if t != name]
+                touched = True
+        if touched:
+            self._changed()
+
+    @callback
     def tasks(self) -> list[dict[str, Any]]:
         """Return tasks in manual order."""
         return sorted(self._tasks.values(), key=lambda t: t[TASK_POSITION])
@@ -91,6 +166,8 @@ class TaskStore:
         notes: str | None = None,
         due_date: date | None = None,
         due_time: time | None = None,
+        priority: int = PRIORITY_NONE,
+        tags: list[str] | None = None,
     ) -> dict[str, Any]:
         now = dt_util.utcnow().isoformat()
         position = max((t[TASK_POSITION] for t in self._tasks.values()), default=-1) + 1
@@ -99,7 +176,11 @@ class TaskStore:
             TASK_TITLE: title,
             TASK_NOTES: notes or "",
             TASK_DUE_DATE: due_date.isoformat() if due_date else None,
-            TASK_DUE_TIME: due_time.isoformat(timespec="minutes") if due_time else None,
+            TASK_DUE_TIME: (
+                due_time.isoformat(timespec="minutes") if due_time and due_date else None
+            ),
+            TASK_PRIORITY: priority,
+            TASK_TAGS: self._resolve_tags(tags or []),
             TASK_STATUS: STATUS_OPEN,
             TASK_COMPLETED_AT: None,
             TASK_POSITION: position,
@@ -108,6 +189,7 @@ class TaskStore:
         }
         self._tasks[task[TASK_ID]] = task
         self._changed()
+        self._fire(EVENT_TASK_CREATED, task)
         return task
 
     @callback
@@ -119,6 +201,8 @@ class TaskStore:
         notes: Any = _UNSET,
         due_date: Any = _UNSET,
         due_time: Any = _UNSET,
+        priority: int | None = None,
+        tags: list[str] | None = None,
         done: bool | None = None,
     ) -> dict[str, Any]:
         """Update fields; pass None for notes/due_* to clear them, omit to keep."""
@@ -135,15 +219,24 @@ class TaskStore:
             )
         if task[TASK_DUE_DATE] is None:
             task[TASK_DUE_TIME] = None  # a time without a date is meaningless
+        if priority is not None:
+            task[TASK_PRIORITY] = priority
+        if tags is not None:
+            task[TASK_TAGS] = self._resolve_tags(tags)
+        event: str | None = None
         if done is not None:
             if done and task[TASK_STATUS] != STATUS_DONE:
                 task[TASK_STATUS] = STATUS_DONE
                 task[TASK_COMPLETED_AT] = dt_util.utcnow().isoformat()
+                event = EVENT_TASK_COMPLETED
             elif not done and task[TASK_STATUS] != STATUS_OPEN:
                 task[TASK_STATUS] = STATUS_OPEN
                 task[TASK_COMPLETED_AT] = None
+                event = EVENT_TASK_REOPENED
         task[TASK_UPDATED_AT] = dt_util.utcnow().isoformat()
         self._changed()
+        if event:
+            self._fire(event, task)
         return task
 
     @callback
