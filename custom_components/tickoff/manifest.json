@@ -1,6 +1,9 @@
 {
   "domain": "tickoff",
   "name": "Tickoff",
+  "after_dependencies": [
+    "repairs"
+  ],
   "categories": [
     "productivity_information.calendars_todos"
   ],
@@ -19,8 +22,5 @@
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/r3mcos3/tickoff/issues",
   "requirements": [],
-  "version": "0.4.0",
-  "after_dependencies": [
-    "repairs"
-  ]
+  "version": "0.4.0"
 }
