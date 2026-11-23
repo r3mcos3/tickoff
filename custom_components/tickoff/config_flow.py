@@ -9,7 +9,7 @@ from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
     ConfigFlowResult,
-    OptionsFlowWithReload,
+    OptionsFlow,
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.selector import (
@@ -61,6 +61,18 @@ class TickoffConfigFlow(ConfigFlow, domain=DOMAIN):
     def async_get_options_flow(config_entry: ConfigEntry) -> TickoffOptionsFlow:
         return TickoffOptionsFlow()
 
+    async def async_step_import(self, user_input: dict[str, Any]) -> ConfigFlowResult:
+        """Create a list from the Tickoff panel (same rules as the UI flow)."""
+        name = user_input[CONF_LIST_NAME].strip()
+        await self.async_set_unique_id(slugify(name))
+        self._abort_if_unique_id_configured()
+        options = {}
+        if service := user_input.get(CONF_NOTIFY_SERVICE):
+            options[CONF_NOTIFY_SERVICE] = service
+        return self.async_create_entry(
+            title=name, data={CONF_LIST_NAME: name, CONF_KIND: KIND_LIST}, options=options
+        )
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -102,7 +114,7 @@ class TickoffConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_create_entry(title="Tickoff", data={CONF_KIND: KIND_OVERVIEW})
 
 
-class TickoffOptionsFlow(OptionsFlowWithReload):
+class TickoffOptionsFlow(OptionsFlow):
     """List: notify service. Overview: global default notify service and notify time."""
 
     async def async_step_init(

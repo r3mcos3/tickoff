@@ -48,6 +48,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: TickoffConfigEntry) -> b
     store = TaskStore(hass, entry.entry_id, entry.title, tags)
     await store.async_load()
     entry.runtime_data = store
+    entry.async_on_unload(entry.add_update_listener(_async_title_changed))
     hub.add_store(store)
     await hass.config_entries.async_forward_entry_setups(entry, LIST_PLATFORMS)
 
@@ -57,6 +58,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: TickoffConfigEntry) -> b
             hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_SYSTEM})
         )
     return True
+
+
+async def _async_title_changed(hass: HomeAssistant, entry: TickoffConfigEntry) -> None:
+    """A renamed list is reloaded so entity name, device and notifications pick it up."""
+    store = entry.runtime_data
+    if store is not None and store.list_name != entry.title:
+        hass.config_entries.async_schedule_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: TickoffConfigEntry) -> bool:

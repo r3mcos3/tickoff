@@ -8,6 +8,7 @@ belangrijke data. Maak vooraf een HA-backup.
 | Onderdeel | Hoe getest | Beperking |
 |---|---|---|
 | Backend (config flow, opslag, todo-platform, services, tags, herhaling, sensoren, meldingen, websocket) | pytest met `pytest-homeassistant-custom-component` op **HA 2026.10.4** | **Niet** op HA 2026.11: de testbibliotheek is nog niet voor 2026.11 uitgebracht (kon niet worden geïnstalleerd, zie hieronder). Niet in een echte HA-instantie. |
+| Zijbalk-paneel (navigatie, lijsten maken/hernoemen/verwijderen, tags, instellingen, niet-beheerder, smal scherm) | Backend: pytest (websocket, paneelregistratie, statische bestanden, adminrechten). Frontend: headless Chromium met mock (42 controles) | Geen echte HA-frontend, geen echte zijbalk, geen touch. |
 | Kaart (renderen, filteren, acties, slepen, bewerken, vandaag-weergave, editor, Nederlands/12-uurs) | Echte headless Chromium met een mock van `hass` (58 controles) | Geen echte HA-frontend: `ha-card`, `ha-form` en het kaartkeuzemenu zijn niet echt getest; geen touch, geen mobiel, geen echte websocket. |
 | Meldingen | Tests met vervalste tijd en een nepservice `notify.*` | Niet met een echte telefoon/Telegram. |
 | Blueprint | Alleen YAML-syntaxis | Niet geïmporteerd in HA. |
@@ -38,6 +39,21 @@ en botst op de nieuwe `httpx`-aliasing. Tests op 2026.11 zijn dus **niet gedraai
 - [ ] Afvinken en weer openen werkt. Slepen van volgorde werkt (todo-kaart).
 - [ ] Bewerk titel in de todo-kaart: prioriteit en tags (zie hieronder) blijven behouden.
 - [ ] Companion app/Assist ("voeg X toe aan Test") werkt.
+
+## Zijbalk-paneel (menu-item "Tickoff")
+
+- [ ] Na installatie staat **Tickoff** in de zijbalk (ook na Ctrl+F5). Open het.
+- [ ] Zonder lijsten: melding "Nog geen lijsten" met knop; **Nieuwe lijst** maakt een lijst (naam + optioneel notify-service) en opent hem.
+- [ ] Zijbalk-aantallen: Vandaag, Alle taken en per lijst kloppen; rood bij achterstallig.
+- [ ] Vandaag-/Alle-taken-/lijstweergave: taken toevoegen, afvinken, filteren (zelfde kaart als op een dashboard). Filter blijft staan als er iets wijzigt.
+- [ ] Lijst hernoemen: naam verandert in paneel en overal; `todo.tickoff_<oude naam>` blijft hetzelfde entity-id; taken blijven.
+- [ ] Notify-service per lijst wijzigen/wissen (dropdown) werkt en blijft na verversen.
+- [ ] Lijst verwijderen: eerste klik vraagt "Zeker?", tweede verwijdert lijst en taken; entiteiten verdwijnen.
+- [ ] Dubbele lijstnaam geeft een foutmelding in het paneel.
+- [ ] Tags: kleur wijzigen, hernoemen, verwijderen (twee kliks), nieuwe tag. Aantallen kloppen.
+- [ ] Instellingen: standaard notify-service en meldtijd opslaan ("Opgeslagen"), blijft na verversen.
+- [ ] Niet-beheerder (apart testaccount): geen Nieuwe lijst, geen hernoemen/verwijderen, instellingen alleen lezen; taken werken wel.
+- [ ] Telefoon (Companion app): menu-knop in het paneel opent de lijstnavigatie; de rest bruikbaar (niet getest, kan beperkingen hebben).
 
 ## Tickoff-kaart
 

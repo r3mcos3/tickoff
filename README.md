@@ -10,7 +10,7 @@ standard `todo` entity (so it works in the Companion app, with Assist and in eve
 you get priorities, **global coloured tags**, subtasks, recurring tasks, snooze, count sensors, due-date
 notifications and a dashboard card.
 
-> **Status: v0.1.0, first release.** It is tested with automated tests (backend and card, see below) but has not yet
+> **Status: early release (v0.2.0).** It is tested with automated tests (backend and card, see below) but has not yet
 > been used for long in a real Home Assistant. Back up before you try it, and please report problems.
 
 ## Features
@@ -28,6 +28,7 @@ notifications and a dashboard card.
 - **Notifications**: a built-in notify-service option (per list or one global default) plus the `tickoff_task_due`
   event and a blueprint. Once per task per due date, also across restarts. 08:00 (configurable) for tasks without a
   time, otherwise at the set time.
+- **Sidebar panel**: a *Tickoff* item in the Home Assistant menu where you do everything in one place (see below).
 - **Dashboard card** (`custom:tickoff-card`): list view and today overview, tag chips with colour and filter,
   priority, subtasks, drag & drop ordering, snooze, edit, bulk-clear and a visual editor. Registered automatically.
 - Languages: English and Dutch.
@@ -77,6 +78,22 @@ entered without the domain, e.g. `mobile_app_my_phone`.
 Definitions: **open** = not done. **overdue** = the due moment has passed (earlier date, or today with a time that
 has passed; a date without a time is overdue the next day). **today** = due today and not yet overdue. Overdue and
 today never overlap.
+
+## Sidebar panel
+
+After installing, **Tickoff** appears in the Home Assistant sidebar (for every user; you can hide it per user in your
+profile). It is the one place for everything:
+
+- **Today**: overdue and due-today tasks over all lists. **All tasks**: every list in one view.
+- **Each list**: the full task view, plus (admins) rename, delete (second click confirms) and the notify service of that list.
+- **New list**: create a list without going through Settings. Lists you create here are the same entries as in
+  *Settings → Devices & services*.
+- **Tags**: colour, rename, delete (with how many tasks use each tag) and create tags.
+- **Settings**: default notify service and notification time.
+
+Creating, renaming and deleting lists and changing settings needs an admin user; everybody can work with tasks.
+Renaming a list changes its name and friendly name; the entity id (`todo.tickoff_<original name>`) stays the same so
+your automations keep working.
 
 ## Dashboard card
 

@@ -12,7 +12,8 @@ from pathlib import Path
 
 import pytest
 
-HARNESS = Path(__file__).parent / "frontend" / "harness.html"
+FRONTEND = Path(__file__).parent / "frontend"
+HARNESS = FRONTEND / "harness.html"
 BROWSER = next(
     (b for n in ("chromium", "google-chrome", "google-chrome-stable", "chromium-browser") if (b := shutil.which(n))),
     None,
@@ -21,11 +22,10 @@ BROWSER = next(
 pytestmark = pytest.mark.skipif(BROWSER is None, reason="no Chromium/Chrome available")
 
 
-@pytest.fixture(scope="module")
-def results() -> dict:
+def run_harness(page: Path) -> dict:
     proc = subprocess.run(
         [BROWSER, "--headless=new", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage",
-         "--allow-file-access-from-files", "--virtual-time-budget=5000", "--dump-dom", HARNESS.as_uri()],
+         "--allow-file-access-from-files", "--virtual-time-budget=5000", "--dump-dom", page.as_uri()],
         capture_output=True, text=True, timeout=90, check=False,
     )
     dom = proc.stdout
@@ -34,6 +34,11 @@ def results() -> dict:
     raw = dom.split(marker, 1)[1].split("</pre>", 1)[0]
     raw = raw.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", '"')
     return json.loads(raw)
+
+
+@pytest.fixture(scope="module")
+def results() -> dict:
+    return run_harness(HARNESS)
 
 
 def test_no_script_error(results):
@@ -66,3 +71,28 @@ def test_row_order_and_today_view(results):
     assert results["today_titles"][0].startswith("Mow")
     assert "Vacuum" in results["today_titles"] and "Buy milk" in results["today_titles"]
     assert "Call plumber" not in results["today_titles"]
+
+
+PANEL_EXPECTED_TRUE = [
+    "nav_has_everything", "today_count", "overdue_badge_red", "today_active", "card_in_today", "card_shows_today_rows",
+    "list_card", "list_notify_select", "list_tools", "card_instance_kept", "notify_ws", "notify_clear_ws",
+    "rename_input", "rename_ws", "rename_closed", "delete_asks", "delete_ws", "back_to_today", "create_form",
+    "create_ws", "blank_name_ignored", "error_shown", "tag_rows", "tag_counts", "tag_color", "tag_rename",
+    "tag_delete_asks", "tag_delete", "tag_add", "settings_values", "settings_ws", "saved_flash", "all_view",
+    "user_no_newlist", "user_no_list_tools", "user_settings_readonly", "narrow_hidden", "narrow_open",
+    "narrow_closes_after_pick", "menu_toggles_sidebar", "dutch", "unsubscribed",
+]
+
+
+@pytest.fixture(scope="module")
+def panel_results() -> dict:
+    return run_harness(FRONTEND / "panel.html")
+
+
+def test_panel_no_script_error(panel_results):
+    assert "error" not in panel_results, panel_results.get("error")
+
+
+@pytest.mark.parametrize("key", PANEL_EXPECTED_TRUE)
+def test_panel_behaviour(panel_results, key):
+    assert panel_results.get(key) is True, f"{key}={panel_results.get(key)!r}"
