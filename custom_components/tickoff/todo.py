@@ -11,12 +11,14 @@ from homeassistant.components.todo import (
     TodoListEntity,
     TodoListEntityFeature,
 )
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant, ServiceResponse, callback
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util
+from homeassistant.util import slugify
 
-from . import TasksConfigEntry
+from . import TickoffConfigEntry
 from .const import (
     DOMAIN,
     STATUS_DONE,
@@ -27,6 +29,7 @@ from .const import (
     TASK_STATUS,
     TASK_TITLE,
 )
+from .services import task_to_response
 from .storage import TaskStore
 
 _UNSET: Any = object()
@@ -34,7 +37,7 @@ _UNSET: Any = object()
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: TasksConfigEntry,
+    entry: TickoffConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     async_add_entities([TasksTodoListEntity(entry)])
@@ -75,8 +78,9 @@ def _split_due(due: date | datetime | None) -> tuple[date | None, time | None]:
 class TasksTodoListEntity(TodoListEntity):
     """One task list."""
 
-    _attr_has_entity_name = True
-    _attr_name = None
+    # Not name-from-device: lets us decouple the friendly name (bare list name)
+    # from the entity_id (tickoff_ prefix).
+    _attr_has_entity_name = False
     _attr_should_poll = False
     _attr_supported_features = (
         TodoListEntityFeature.CREATE_TODO_ITEM
@@ -88,12 +92,15 @@ class TasksTodoListEntity(TodoListEntity):
         | TodoListEntityFeature.SET_DESCRIPTION_ON_ITEM
     )
 
-    def __init__(self, entry: TasksConfigEntry) -> None:
+    def __init__(self, entry: TickoffConfigEntry) -> None:
         self._store: TaskStore = entry.runtime_data
         self._attr_unique_id = entry.entry_id
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)}, name=f"Tickoff {entry.title}"
+            identifiers={(DOMAIN, entry.entry_id)}, name=entry.title
         )
+        self._attr_name = entry.title
+        # entity_id gets the tickoff_ prefix; the friendly name stays the bare list name
+        self.internal_integration_suggested_object_id = f"tickoff_{slugify(entry.title)}"
 
     async def async_added_to_hass(self) -> None:
         self.async_on_remove(self._store.async_add_listener(self._refresh))
@@ -129,3 +136,49 @@ class TasksTodoListEntity(TodoListEntity):
         self, uid: str, previous_uid: str | None = None
     ) -> None:
         self._store.move(uid, previous_uid)
+
+    # --- Tickoff services (priority, tags and friends live outside TodoItem) ---
+
+    def _require(self, task_id: str) -> None:
+        if self._store.get(task_id) is None:
+            raise ServiceValidationError(f"Unknown task {task_id!r}")
+
+    async def async_add_task(self, **data: Any) -> ServiceResponse:
+        due_date = data.get("due_date")
+        task = self._store.add(
+            data["title"],
+            notes=data.get("notes"),
+            due_date=due_date,
+            due_time=data.get("due_time"),
+            priority=data.get("priority", 0),
+            tags=data.get("tags"),
+        )
+        return {"task": task_to_response(task)}
+
+    async def async_update_task(self, **data: Any) -> None:
+        task_id = data.pop("task_id")
+        self._require(task_id)
+        self._store.update(task_id, **data)
+
+    async def async_complete_task(self, task_id: str) -> None:
+        self._require(task_id)
+        self._store.update(task_id, done=True)
+
+    async def async_reopen_task(self, task_id: str) -> None:
+        self._require(task_id)
+        self._store.update(task_id, done=False)
+
+    async def async_delete_task(self, task_id: str) -> None:
+        self._require(task_id)
+        self._store.delete([task_id])
+
+    async def async_get_tasks(
+        self, status: str | None = None, tag: str | None = None
+    ) -> ServiceResponse:
+        tasks = self._store.tasks()
+        if status:
+            tasks = [t for t in tasks if t[TASK_STATUS] == status]
+        if tag:
+            wanted = tag.strip().lower()
+            tasks = [t for t in tasks if wanted in (x.lower() for x in t["tags"])]
+        return {"tasks": [task_to_response(t) for t in tasks]}

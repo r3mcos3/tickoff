@@ -1,0 +1,62 @@
+add_task:
+  target:
+    entity:
+      integration: tickoff
+      domain: todo
+  fields:
+    title: {required: true, example: "Pay the bill", selector: {text: {}}}
+    notes: {selector: {text: {multiline: true}}}
+    due_date: {selector: {date: {}}}
+    due_time: {selector: {time: {}}}
+    priority:
+      selector:
+        select:
+          mode: dropdown
+          options: [{value: "0", label: "None"}, {value: "1", label: "Low"}, {value: "2", label: "Medium"}, {value: "3", label: "High"}]
+    tags: {example: "garden, weekend", selector: {text: {multiple: true}}}
+update_task:
+  target:
+    entity:
+      integration: tickoff
+      domain: todo
+  fields:
+    task_id: {required: true, selector: {text: {}}}
+    title: {selector: {text: {}}}
+    notes: {selector: {text: {multiline: true}}}
+    due_date: {selector: {date: {}}}
+    due_time: {selector: {time: {}}}
+    priority:
+      selector:
+        select:
+          mode: dropdown
+          options: [{value: "0", label: "None"}, {value: "1", label: "Low"}, {value: "2", label: "Medium"}, {value: "3", label: "High"}]
+    tags: {selector: {text: {multiple: true}}}
+complete_task: &task_id_only
+  target:
+    entity:
+      integration: tickoff
+      domain: todo
+  fields:
+    task_id: {required: true, selector: {text: {}}}
+reopen_task: *task_id_only
+delete_task: *task_id_only
+get_tasks:
+  target:
+    entity:
+      integration: tickoff
+      domain: todo
+  fields:
+    status: {selector: {select: {mode: dropdown, options: [open, done]}}}
+    tag: {selector: {text: {}}}
+set_tag:
+  fields:
+    name: {required: true, selector: {text: {}}}
+    color: {required: true, example: "#2e7d32", selector: {text: {}}}
+rename_tag:
+  fields:
+    name: {required: true, selector: {text: {}}}
+    new_name: {required: true, selector: {text: {}}}
+delete_tag:
+  fields:
+    name: {required: true, selector: {text: {}}}
+get_tags: {}
