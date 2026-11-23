@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Takenlijst aanmaken",
+        "description": "Elke lijst wordt een todo-entiteit. Taken worden in Home Assistant zelf opgeslagen.",
+        "data": { "name": "Naam van de lijst" }
+      }
+    },
+    "error": { "name_required": "Vul een naam voor de lijst in." },
+    "abort": { "already_configured": "Er bestaat al een lijst met deze naam." }
+  }
+}

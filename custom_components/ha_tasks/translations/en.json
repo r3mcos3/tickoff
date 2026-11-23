@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Create a task list",
+        "description": "Every list becomes a to-do entity. Tasks are stored in Home Assistant itself.",
+        "data": { "name": "List name" }
+      }
+    },
+    "error": { "name_required": "Enter a name for the list." },
+    "abort": { "already_configured": "A list with this name already exists." }
+  }
+}
