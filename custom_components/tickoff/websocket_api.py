@@ -9,6 +9,7 @@ import voluptuous as vol
 from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.util import dt as dt_util
 
@@ -49,6 +50,9 @@ def build_snapshot(hub: Hub, tags: dict[str, dict[str, str]]) -> dict[str, Any]:
     return {
         "now": now.isoformat(),
         "entity_id": entity_id,
+        "update_entity_id": (
+            er.async_get(hub.hass).async_get_entity_id("update", DOMAIN, f"{entry.entry_id}_update") if entry else None
+        ),
         "tasks": tasks,
         "tags": tags,
         "settings": {

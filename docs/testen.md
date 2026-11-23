@@ -47,11 +47,11 @@ Doel: in je eigen HA controleren wat de automatische tests niet kunnen. Maak voo
 
 ## Update-entiteit
 
-- [ ] `update.tickoff_update` bestaat (Instellingen → Systeem → Updates en op de integratiepagina). Bij een nieuwere release op GitHub staat hij op "beschikbaar" met release-notities; staat HA op de nieuwste, dan "up-to-date".
+- [ ] `update.tickoff` (de update-entiteit van Tickoff zelf; `update.tickoff_update` is van HACS) bestaat (Instellingen → Systeem → Updates en op de integratiepagina). Bij een nieuwere release op GitHub staat hij op "beschikbaar" met release-notities; staat HA op de nieuwste, dan "up-to-date".
 - [ ] Tickoff → Instellingen → Updates toont versie en knop **Update installeren** (alleen beheerder); in het menu staat een stip bij Instellingen als er een update is.
 - [ ] Installeren: na afloop staat er een melding onder Instellingen → Systeem → Reparaties ("Herstart Home Assistant …") met een knop die herstart. Na de herstart is de nieuwe versie actief en de melding weg. De vorige versie staat in `/config/.storage/tickoff_backup/<versie>/`.
 - [ ] Zonder internet blijft Tickoff werken (de update-entiteit meldt dan gewoon geen update).
-- [ ] Gebruik je HACS? Controleer dat HACS na een zelf-update niet in de war raakt (hij kan dezelfde versie nog even aanbieden).
+- [ ] Met HACS: er zijn twee update-entiteiten (HACS: `update.tickoff_update`, Tickoff: `update.tickoff` of `_2`). Beide tonen dezelfde versies; **één** keer installeren (via welke dan ook) zet beide op "up-to-date" — je hoeft niet twee keer te installeren. Tickoff's knop laat HACS het werk doen (je ziet HACS' eigen herstartmelding).
 - **Niet getest:** een echte update van GitHub (alleen met nagebootste downloads en een tijdelijke map), de reparatie-herstartknop in de echte HA-frontend.
 
 ## Datum en tijd

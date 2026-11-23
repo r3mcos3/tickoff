@@ -128,7 +128,7 @@
       const lang = ((hass.locale && hass.locale.language) || hass.language || "en").slice(0, 2);
       this._t = I18N[lang] || I18N.en;
       if (this._card) this._card.hass = hass;
-      const upd = hass.states && hass.states["update.tickoff_update"];
+      const upd = this._updateState();
       const sig = upd ? upd.state + JSON.stringify(upd.attributes) : "";
       if (sig !== this._updSig) { this._updSig = sig; if (this._rendered && this._snap) this._render(); }
       if (!this._unsub && !this._subscribing && this.isConnected) this._subscribe();
@@ -159,6 +159,12 @@
       } finally {
         this._subscribing = false;
       }
+    }
+
+    /** Our own update entity (its id comes from the server: HACS has an update entity for Tickoff too). */
+    _updateState() {
+      const id = this._snap && this._snap.update_entity_id;
+      return id && this._hass && this._hass.states ? this._hass.states[id] : null;
     }
 
     get _admin() { return !!(this._hass && this._hass.user && this._hass.user.is_admin); }
@@ -233,7 +239,7 @@
           html += `<div class="item ${view === "tag:" + name ? "active" : ""}" data-view="tag:${esc(name)}"><span class="dot" style="background:${esc(snap.tags[name].color)}"></span><span>${esc(name)}</span>${count ? `<span class="n">${count}</span>` : ""}</div>`;
         }
       }
-      const upd = this._hass && this._hass.states && this._hass.states["update.tickoff_update"];
+      const upd = this._updateState();
       html += "<hr>" + item("tags", "mdi:tag-multiple-outline", t.manage_tags) + item("settings", "mdi:cog-outline", t.settings, upd && upd.state === "on" ? "●" : "", false);
       this.shadowRoot.getElementById("nav").innerHTML = html;
     }
@@ -292,7 +298,7 @@
 
     _updateBox() {
       const t = this._t;
-      const st = this._hass && this._hass.states && this._hass.states["update.tickoff_update"];
+      const st = this._updateState();
       if (!st) return "";
       const a = st.attributes;
       const available = st.state === "on";
@@ -395,7 +401,7 @@
         } else if (act === "installupdate") {
           this._installing = true;
           this._render();
-          try { await this._hass.callService("update", "install", { entity_id: "update.tickoff_update" }); }
+          try { await this._hass.callService("update", "install", { entity_id: this._snap.update_entity_id }); }
           catch (e) { this._error = (e && e.message) || String(e); }
           this._installing = false;
           this._render();

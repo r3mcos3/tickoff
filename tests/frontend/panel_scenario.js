@@ -10,7 +10,7 @@
     const T = (id, title, o = {}) => ({ id, title, notes: "", due_date: null, due_time: null, priority: 0, tags: [], subtasks: [],
       recurrence: null, status: "open", completed_at: null, history: [], state: "no_date", ...o });
     const snap = {
-      now: "2026-03-10T09:00:00+01:00", entity_id: "todo.tickoff",
+      now: "2026-03-10T09:00:00+01:00", entity_id: "todo.tickoff", update_entity_id: "update.tickoff",
       tags: { garden: { color: "#2e7d32" }, home: { color: "#ffee58" }, unused: { color: "#123456" } },
       settings: { notify_targets: ["entity:notify.telegram_remco"], notify_time: "07:30:00" },
       notify_targets: [
@@ -28,7 +28,7 @@
     };
     let updState = { state: "on", attributes: { installed_version: "0.3.1", latest_version: "0.4.0", release_url: "https://github.com/r3mcos3/tickoff/releases/tag/v0.4.0", release_summary: "Adds the update entity", in_progress: false, restart_required: false } };
     const mkHass = (admin, lang) => ({
-      language: lang, states: { "update.tickoff_update": updState }, locale: { language: lang, time_format: "24" }, user: { is_admin: admin },
+      language: lang, states: { "update.tickoff": updState }, locale: { language: lang, time_format: "24" }, user: { is_admin: admin },
       callService: (d, s, data, target) => { svc.push({ d, s, data, target }); return Promise.resolve(); },
       callWS: (msg) => { ws.push(msg); return Promise.resolve(msg.type === "tickoff/test_notify" ? testResult : {}); },
       connection: { subscribeMessage: async (cb) => { pushers.push(cb); setTimeout(() => cb(snap), 0); return () => { unsub++; }; } },
@@ -141,16 +141,16 @@
     R.settings_nav_dot = sr.querySelector('nav [data-view="settings"] .n').textContent === "●";
     const s0 = svc.length;
     click('[data-act="installupdate"]'); await tick(); await tick();
-    R.install_calls_update_service = svc[s0].d === "update" && svc[s0].s === "install" && svc[s0].data.entity_id === "update.tickoff_update";
+    R.install_calls_update_service = svc[s0].d === "update" && svc[s0].s === "install" && svc[s0].data.entity_id === "update.tickoff";
     // state changes are picked up without navigating away
     updState = { state: "off", attributes: { ...updState.attributes, installed_version: "0.4.0", latest_version: "0.4.0", restart_required: true } };
-    panel.hass = { ...mkHass(true, "en"), states: { "update.tickoff_update": updState } }; await tick();
+    panel.hass = { ...mkHass(true, "en"), states: { "update.tickoff": updState } }; await tick();
     R.restart_needed_shown = box().includes("Restart Home Assistant") && !!sr.querySelector('a[href="/config/repairs"]') && !sr.querySelector('[data-act="installupdate"]');
     updState = { state: "off", attributes: { ...updState.attributes, restart_required: false } };
-    panel.hass = { ...mkHass(true, "en"), states: { "update.tickoff_update": updState } }; await tick();
+    panel.hass = { ...mkHass(true, "en"), states: { "update.tickoff": updState } }; await tick();
     R.up_to_date_shown = box().includes("up to date") && !sr.querySelector('nav [data-view="settings"] .n');
     updState = { state: "on", attributes: { ...updState.attributes, latest_version: "0.5.0" } };
-    panel.hass = { ...mkHass(true, "en"), states: { "update.tickoff_update": updState } }; await tick();
+    panel.hass = { ...mkHass(true, "en"), states: { "update.tickoff": updState } }; await tick();
 
     // no targets: helpful hint
     const snapNone = { ...snap, notify_targets: [], settings: { notify_targets: [], notify_time: "08:00:00" } };

@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import timedelta
 from typing import Any
 
 from homeassistant.components.update import UpdateEntity, UpdateEntityFeature
-from homeassistant.core import HomeAssistant
+from homeassistant.const import EVENT_STATE_CHANGED
+from homeassistant.core import Event, EventStateChangedData, HomeAssistant, State, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -25,6 +28,27 @@ _LOGGER = logging.getLogger(__name__)
 
 CHECK_INTERVAL = timedelta(hours=6)
 ISSUE_RESTART = "restart_required"
+HACS_RELEASE_PREFIX = f"https://github.com/{REPO}/"
+
+
+def _plain(version: str | None) -> str | None:
+    """HACS names versions after the tag (v0.4.2); ours are plain (0.4.2)."""
+    if not version or version in ("unknown", "unavailable"):
+        return None
+    return version[1:] if re.match(r"^v\d", version) else version
+
+
+def _newer(a: str, b: str) -> bool:
+    """True when version a is newer than b (numeric dotted versions; anything else is not newer)."""
+    try:
+        return tuple(int(x) for x in a.split(".")) > tuple(int(x) for x in b.split("."))
+    except ValueError:
+        return False
+
+
+@callback
+def _is_update_event(event_data: EventStateChangedData) -> bool:
+    return event_data["entity_id"].startswith("update.")
 
 
 async def async_setup_entry(
@@ -67,10 +91,35 @@ class TickoffUpdateEntity(CoordinatorEntity[DataUpdateCoordinator[dict[str, Any]
     def __init__(self, coordinator: DataUpdateCoordinator[dict[str, Any] | None], entry: TickoffConfigEntry) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_update"
-        self.internal_integration_suggested_object_id = "tickoff_update"
+        self.internal_integration_suggested_object_id = "tickoff"  # update.tickoff (HACS owns update.tickoff_update)
         self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, entry.entry_id)}, name="Tickoff")
         self._installed = installed_version()
         self._restart_pending = False
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+
+        @callback
+        def _hacs_changed(event: Event[EventStateChangedData]) -> None:
+            if (new := event.data["new_state"]) and self._is_hacs_state(new):
+                self.async_write_ha_state()
+
+        self.async_on_remove(
+            self.hass.bus.async_listen(EVENT_STATE_CHANGED, _hacs_changed, event_filter=_is_update_event)
+        )
+
+    # ---- HACS: when HACS manages Tickoff it owns the install, so there is only ever one install ----
+
+    def _is_hacs_state(self, state: State) -> bool:
+        if state.domain != "update" or state.entity_id == self.entity_id:
+            return False
+        if not str(state.attributes.get("release_url") or "").startswith(HACS_RELEASE_PREFIX):
+            return False
+        entry = er.async_get(self.hass).async_get(state.entity_id)
+        return entry is not None and entry.platform == "hacs"
+
+    def _hacs_state(self) -> State | None:
+        return next((s for s in self.hass.states.async_all("update") if self._is_hacs_state(s)), None)
 
     @property
     def available(self) -> bool:
@@ -78,12 +127,21 @@ class TickoffUpdateEntity(CoordinatorEntity[DataUpdateCoordinator[dict[str, Any]
 
     @property
     def installed_version(self) -> str:
-        return self._installed
+        hacs = self._hacs_state()
+        return (_plain(hacs.attributes.get("installed_version")) if hacs else None) or self._installed
 
     @property
     def latest_version(self) -> str:
         data = self.coordinator.data
-        return data["version"] if data else self._installed
+        github = data["version"] if data else None
+        hacs = self._hacs_state()
+        theirs = _plain(hacs.attributes.get("latest_version")) if hacs else None
+        candidates = [v for v in (github, theirs, self.installed_version) if v]
+        best = candidates[0]
+        for version in candidates[1:]:
+            if _newer(version, best):
+                best = version
+        return best
 
     @property
     def release_url(self) -> str:
@@ -102,12 +160,23 @@ class TickoffUpdateEntity(CoordinatorEntity[DataUpdateCoordinator[dict[str, Any]
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        return {"restart_required": self._restart_pending}
+        hacs = self._hacs_state()
+        return {"restart_required": self._restart_pending, "managed_by_hacs": hacs.entity_id if hacs else None}
 
     async def async_install(self, version: str | None, backup: bool, **kwargs: Any) -> None:
         """Install the latest release; Home Assistant has to be restarted afterwards."""
         target = version or self.latest_version
-        if target == self._installed:
+        if target == self.installed_version:
+            return
+        hacs = self._hacs_state()
+        if hacs is not None:
+            # HACS manages this install: let HACS do it (it also raises its own restart notice), so the
+            # two update entities never disagree and nothing has to be installed twice.
+            await self.hass.services.async_call(
+                "update", "install", {"entity_id": hacs.entity_id, "version": f"v{target}"}, blocking=True
+            )
+            self._restart_pending = True
+            self.async_write_ha_state()
             return
         await async_install(self.hass, target)
         self._installed = target
