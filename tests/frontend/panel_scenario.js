@@ -35,6 +35,7 @@
     });
     const pushAll = () => pushers.forEach((p) => p(snap));
 
+    try { localStorage.setItem("tickoff-panel-view", "settings"); } catch (e) { /* ignore */ } // an old remembered view must not matter
     const panel = document.createElement("tickoff-panel");
     document.body.appendChild(panel);
     panel.hass = mkHass(true, "en"); panel.narrow = false; panel.route = {}; panel.panel = {};
@@ -48,9 +49,13 @@
     R.nav_everything = ["Today2", "Upcoming1", "All tasks4", "Completed1", "garden1", "home2", "unused", "Manage tags", "Settings"].every((x) => R.nav.some((n) => n.includes(x)));
     R.no_lists_anywhere = !R.nav.some((n) => /list/i.test(n)) && !sr.querySelector('[data-act="newlist"]');
     R.overdue_badge = !!sr.querySelector('nav .item[data-view="today"] .n.bad');
-    R.today_active = sr.querySelector('nav .item[data-view="today"]').classList.contains("active");
+    R.opens_on_all_tasks = sr.querySelector('nav .item[data-view="all"]').classList.contains("active") && !sr.querySelector('nav .item[data-view="today"]').classList.contains("active");
     let card = sr.querySelector("tickoff-card");
+    R.all_card_on_open = !!card && card.shadowRoot.querySelector("h2").textContent === "All tasks" && cardRows().length === 4;
+    click('nav [data-view="today"]'); await tick(); await tick();
+    card = sr.querySelector("tickoff-card");
     R.today_card = !!card && card.shadowRoot.querySelector("h2").textContent === "Today" && cardRows().join(",") === "Mow,Milk";
+    R.today_active = sr.querySelector('nav .item[data-view="today"]').classList.contains("active");
 
     click('nav [data-view="upcoming"]'); await tick(); await tick();
     R.upcoming_card = sr.querySelector("tickoff-card").shadowRoot.querySelector("h2").textContent === "Upcoming" && cardRows().join(",") === "Later";
@@ -152,6 +157,13 @@
     pushers.forEach((p) => p(snapNone)); await tick();
     R.no_targets_hint = sr.getElementById("body").textContent.includes("Telegram bot integration");
     pushAll();
+
+    // a second opening starts on All tasks again, not on where the first one ended
+    const p6 = document.createElement("tickoff-panel");
+    document.body.appendChild(p6);
+    p6.hass = mkHass(true, "en"); await tick(); await tick();
+    R.reopens_on_all_tasks = p6.shadowRoot.querySelector('nav .item[data-view="all"]').classList.contains("active");
+    p6.remove();
 
     // non-admin
     const p2 = document.createElement("tickoff-panel");

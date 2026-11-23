@@ -29,6 +29,7 @@ Doel: in je eigen HA controleren wat de automatische tests niet kunnen. Maak voo
 
 ## Zijbalk
 
+- [ ] Tickoff in de zijbalk opent altijd op **Alle taken**, ook nadat je eerder een andere weergave (Vandaag, Instellingen, ...) had gekozen.
 - [ ] Zijbalk-aantallen bij Vandaag, Binnenkort, Alle taken, Voltooid en per tag kloppen; rood bij achterstallig.
 - [ ] **+ Nieuwe taak** (rechtsboven in de kaart) opent een venster met titel, notities, subtaken, datum/tijd, prioriteit, tags en herhaling. Er is geen losse invoerbalk meer.
 - [ ] Snel typen in de titel: `Bel mama morgen 14:30 #familie !hoog` — de voorvertoning toont datum, prioriteit en tag; na Enter (of "Taak toevoegen") bestaat de taak met die waarden. Wat je zelf invult wint van de woorden in de titel. Ook Engels en `Water plants every week`.

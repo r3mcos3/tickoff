@@ -113,8 +113,7 @@
     constructor() {
       super();
       this.attachShadow({ mode: "open" });
-      this._view = "today"; // today | upcoming | all | done | tag:<name> | tags | settings
-      try { this._view = localStorage.getItem("tickoff-panel-view") || "today"; } catch (e) { /* storage unavailable */ }
+      this._view = "all"; // always opens on All tasks. Others: today | upcoming | done | tag:<name> | tags | settings
       this._t = I18N.en;
       this._navOpen = false;
       this._confirm = null;
@@ -182,7 +181,6 @@
       this._error = "";
       this._flash = "";
       this._pick = null;
-      try { localStorage.setItem("tickoff-panel-view", view); } catch (e) { /* ignore */ }
       this._render();
     }
 
@@ -255,7 +253,7 @@
       if (!snap) { this._dropCard(); body.innerHTML = ""; return; }
 
       if (["today", "upcoming", "all", "done"].includes(view) || view.startsWith("tag:")) {
-        if (view.startsWith("tag:") && !snap.tags[view.slice(4)]) { this._go("today"); return; }
+        if (view.startsWith("tag:") && !snap.tags[view.slice(4)]) { this._go("all"); return; }
         // the card stays alive between snapshots, so its filters and open rows survive
         if (this._cardKey !== view || !this._card || !body.contains(this._card)) {
           this._dropCard();
