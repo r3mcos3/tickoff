@@ -75,3 +75,8 @@ async def test_tasks_survive_reload(hass, setup_entry):
     await hass.config_entries.async_reload(setup_entry.entry_id)
     await hass.async_block_till_done()
     assert [i["summary"] for i in await _items(hass)] == ["Keep me"]
+
+
+async def test_friendly_name_is_bare_list_name(hass, setup_entry):
+    state = hass.states.get(ENTITY)
+    assert state.attributes["friendly_name"] == "Groceries"
